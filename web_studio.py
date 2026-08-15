@@ -1527,13 +1527,25 @@ class SilentThreadingHTTPServer(ThreadingHTTPServer):
 
 
 def run_web_studio(port: int = 7860, open_browser: bool = True) -> None:
-    """Launch the Web Studio HTTP server with Hot-Reload watcher."""
+    """Launch the Web Studio HTTP server with Hot-Reload watcher and auto port discovery."""
     # Start dynamic file watcher for automatic hot-reloads
     start_file_watcher()
 
-    server_address = ("", port)
-    httpd = SilentThreadingHTTPServer(server_address, WebStudioHandler)
-    url = f"http://localhost:{port}"
+    httpd = None
+    active_port = port
+    for p in range(port, port + 20):
+        try:
+            httpd = SilentThreadingHTTPServer(("", p), WebStudioHandler)
+            active_port = p
+            break
+        except OSError:
+            continue
+
+    if not httpd:
+        print(f"[Error] Could not bind to any port in range {port}-{port+20}")
+        return
+
+    url = f"http://localhost:{active_port}"
 
     print("=" * 65)
     print(f"🎙️  Text to Speech Web Studio v2.0 is LIVE!")
@@ -1555,4 +1567,5 @@ def run_web_studio(port: int = 7860, open_browser: bool = True) -> None:
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 7860
     run_web_studio(port=port)
+
 
