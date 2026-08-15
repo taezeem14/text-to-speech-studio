@@ -258,7 +258,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
       border-radius: 16px;
       padding: 24px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-      contain: content;
+      position: relative;
+      overflow: visible;
     }
 
     .tab-content { display: none; }
@@ -567,14 +568,13 @@ HTML_PAGE = r"""<!DOCTYPE html>
       background: #111726;
       border: 1px solid var(--card-border);
       border-radius: 12px;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 210, 255, 0.15);
       z-index: 1000;
       opacity: 0;
       visibility: hidden;
       transform: translateY(-6px);
       transition: opacity 0.15s ease, transform 0.15s ease;
-      padding: 8px;
-      contain: content;
+      padding: 10px;
     }
     .custom-select-wrapper.open .custom-dropdown-menu {
       opacity: 1;
@@ -585,28 +585,34 @@ HTML_PAGE = r"""<!DOCTYPE html>
     .dropdown-search-box {
       position: relative;
       margin-bottom: 8px;
+      display: flex;
+      align-items: center;
     }
     .dropdown-search-box i {
       position: absolute;
-      left: 12px;
+      left: 14px;
       top: 50%;
       transform: translateY(-50%);
-      color: var(--subtext);
+      color: var(--accent);
       font-size: 13px;
+      pointer-events: none;
+      z-index: 2;
     }
     .dropdown-search-input {
       width: 100%;
-      background: rgba(10, 14, 22, 0.9);
+      background: #080c14;
       border: 1px solid var(--card-border);
       border-radius: 8px;
       color: var(--text);
+      font-family: var(--font-main);
       font-size: 13px;
-      padding: 8px 12px 8px 34px;
+      padding: 10px 14px 10px 40px;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
     .dropdown-search-input:focus {
       border-color: var(--accent);
+      box-shadow: 0 0 8px rgba(0, 210, 255, 0.25);
     }
 
     .dropdown-options-list {
@@ -711,7 +717,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
         </div>
 
         <div class="controls-grid">
-          <div class="control-item" style="position: relative;">
+          <div class="control-item" style="position: relative; z-index: 50;">
             <label>Neural Voice</label>
             <input type="hidden" id="voiceSelect" value="en-US-ChristopherNeural">
             <div class="custom-select-wrapper" id="customVoiceWrapper">
