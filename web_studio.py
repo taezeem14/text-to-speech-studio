@@ -504,6 +504,10 @@ HTML_PAGE = r"""<!DOCTYPE html>
       position: relative;
       user-select: none;
       width: 100%;
+      z-index: 50;
+    }
+    .custom-select-wrapper.open {
+      z-index: 9999;
     }
 
     .custom-select-trigger {
@@ -549,13 +553,13 @@ HTML_PAGE = r"""<!DOCTYPE html>
       top: calc(100% + 6px);
       left: 0;
       width: 100%;
-      min-width: 320px;
-      max-width: 480px;
+      min-width: 340px;
+      max-width: 520px;
       background: #111726;
-      border: 1px solid rgba(0, 210, 255, 0.25);
+      border: 1px solid rgba(0, 210, 255, 0.3);
       border-radius: 12px;
-      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0, 210, 255, 0.15);
-      z-index: 1000;
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(0, 210, 255, 0.2);
+      z-index: 99999;
       opacity: 0;
       visibility: hidden;
       transform: translateY(-8px);
@@ -609,8 +613,30 @@ HTML_PAGE = r"""<!DOCTYPE html>
       box-shadow: 0 0 8px rgba(0, 210, 255, 0.25);
     }
 
+    .dropdown-hub-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(0, 210, 255, 0.08);
+      border: 1px dashed rgba(0, 210, 255, 0.3);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      cursor: pointer;
+      margin-bottom: 8px;
+      transition: all 0.2s;
+    }
+    .dropdown-hub-link:hover {
+      background: rgba(0, 210, 255, 0.18);
+      border-color: var(--accent);
+    }
+
     .dropdown-options-list {
-      max-height: 260px;
+      max-height: 280px;
+      min-height: 180px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -622,7 +648,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 9px 12px;
+      padding: 8px 10px;
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.15s ease;
@@ -641,6 +667,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
       display: flex;
       align-items: center;
       gap: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .dropdown-option .opt-badge {
       font-size: 10px;
@@ -653,6 +682,139 @@ HTML_PAGE = r"""<!DOCTYPE html>
     .dropdown-option.selected .opt-badge {
       background: rgba(0, 210, 255, 0.2);
       color: var(--accent);
+    }
+
+    .opt-audition-btn {
+      background: transparent;
+      border: none;
+      color: var(--subtext);
+      font-size: 12px;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      transition: all 0.15s;
+    }
+    .opt-audition-btn:hover {
+      color: var(--accent);
+      background: rgba(0, 210, 255, 0.15);
+    }
+
+    /* Modal Dialog for Full Voice Hub */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(5, 8, 14, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100000;
+      padding: 20px;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-card {
+      background: #111726;
+      border: 1px solid rgba(0, 210, 255, 0.3);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 900px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(0, 210, 255, 0.2);
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0f1422;
+    }
+    .modal-header h3 {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+    }
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--subtext);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: color 0.15s;
+    }
+    .modal-close-btn:hover {
+      color: #ff5555;
+    }
+    .modal-filters {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(13, 18, 28, 0.9);
+    }
+    .modal-chips-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .modal-chip {
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      color: var(--subtext);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .modal-chip:hover, .modal-chip.active {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: rgba(0, 210, 255, 0.12);
+    }
+    .modal-body-grid {
+      padding: 16px 20px;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 12px;
+      flex: 1;
+    }
+    .voice-hub-card {
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+      transition: all 0.2s;
+    }
+    .voice-hub-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 210, 255, 0.15);
+    }
+    .voice-hub-card.selected {
+      border-color: var(--accent);
+      background: rgba(0, 210, 255, 0.08);
     }
 
     /* Subtitles Box */
@@ -728,7 +890,10 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
         <div class="controls-grid">
           <div class="control-item" style="position: relative; z-index: 50;">
-            <label>Neural Voice</label>
+            <label>
+              <span>Neural Voice</span>
+              <a href="javascript:void(0)" onclick="openVoiceModal()" style="color:var(--accent); font-size:12px; text-decoration:none; font-weight:600; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-table-cells"></i> Browse All (400+)</a>
+            </label>
             <input type="hidden" id="voiceSelect" value="en-US-ChristopherNeural">
             <div class="custom-select-wrapper" id="customVoiceWrapper">
               <div class="custom-select-trigger" id="customVoiceTrigger" onclick="toggleVoiceDropdown()">
@@ -739,6 +904,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
                 <i class="fa-solid fa-chevron-down arrow-icon"></i>
               </div>
               <div class="custom-dropdown-menu" id="customVoiceMenu">
+                <div class="dropdown-hub-link" onclick="openVoiceModal(); closeVoiceDropdown();">
+                  <i class="fa-solid fa-layer-group"></i> <span>Open Full Voice Hub Modal (400+ Voices)</span>
+                </div>
                 <div class="dropdown-search-box">
                   <i class="fa-solid fa-magnifying-glass"></i>
                   <input type="text" class="dropdown-search-input" id="dropdownSearch" placeholder="Filter voices by name or locale..." oninput="filterDropdownOptions()" onclick="event.stopPropagation()">
@@ -876,6 +1044,48 @@ HTML_PAGE = r"""<!DOCTYPE html>
         </div>
       </div>
     </section>
+
+    <!-- VOICE HUB MODAL (Search & Audition 400+ Voices) -->
+    <div id="voiceModal" class="modal-overlay" onclick="if(event.target === this) closeVoiceModal();">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-microphone-lines" style="color:var(--accent);"></i> Microsoft Edge Neural Voice Hub (400+ Voices)</h3>
+          <button class="modal-close-btn" onclick="closeVoiceModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-filters">
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="position: relative; flex: 1;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--accent); font-size: 13px;"></i>
+              <input type="text" id="modalVoiceSearch" class="dropdown-search-input" placeholder="Search by voice name, language, country code (e.g. US, India, Japan, Spanish)..." oninput="filterModalVoices()">
+            </div>
+            <select id="modalGenderFilter" onchange="filterModalVoices()" style="width: 140px; padding: 10px 12px;">
+              <option value="All">All Genders</option>
+              <option value="Female">Female</option>
+              <option value="Male">Male</option>
+            </select>
+          </div>
+          <div class="modal-chips-row">
+            <button class="modal-chip active" onclick="setModalRegionFilter('All', this)">🌍 All Languages</button>
+            <button class="modal-chip" onclick="setModalRegionFilter('en-US', this)">🇺🇸 US English</button>
+            <button class="modal-chip" onclick="setModalRegionFilter('en-GB', this)">🇬🇧 UK English</button>
+            <button class="modal-chip" onclick="setModalRegionFilter('en-IN', this)">🇮🇳 Indian English</button>
+            <button class="modal-chip" onclick="setModalRegionFilter('hi-IN', this)">🇮🇳 Hindi</button>
+            <button class="modal-chip" onclick="setModalRegionFilter('ja-JP', this)">🇯🇵 Japanese</button>
+            <button class="modal-chip" onclick="setModalRegionFilter('es-', this)">🇪🇸 Spanish</button>
+            <button class="modal-chip" onclick="setModalRegionFilter('fr-', this)">🇫🇷 French</button>
+            <button class="modal-chip" onclick="setModalRegionFilter('de-', this)">🇩🇪 German</button>
+            <button class="modal-chip" onclick="setModalRegionFilter('zh-', this)">🇨🇳 Chinese</button>
+            <button class="modal-chip" onclick="setModalRegionFilter('pt-BR', this)">🇧🇷 Portuguese</button>
+            <button class="modal-chip" onclick="setModalRegionFilter('ko-KR', this)">🇰🇷 Korean</button>
+            <button class="modal-chip" onclick="setModalRegionFilter('it-IT', this)">🇮🇹 Italian</button>
+            <button class="modal-chip" onclick="setModalRegionFilter('ar-', this)">🇸🇦 Arabic</button>
+          </div>
+        </div>
+        <div id="modalVoiceGrid" class="modal-body-grid">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </div>
   </main>
 
 
@@ -963,6 +1173,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
             <span>${v.ShortName}</span>
           </div>
           <div style="display:flex; align-items:center; gap:6px;">
+            <button class="opt-audition-btn" title="Audition voice sample" onclick="event.stopPropagation(); auditionVoice('${v.ShortName}')">
+              <i class="fa-solid fa-volume-high"></i>
+            </button>
             <span class="opt-badge">${v.Locale}</span>
             <span class="opt-badge" style="color:${isFem ? '#ff69b4' : '#00d2ff'};">${v.Gender}</span>
             ${isSelected ? '<i class="fa-solid fa-check" style="color:var(--accent); font-size:11px; margin-left:4px;"></i>' : ''}
@@ -972,6 +1185,85 @@ HTML_PAGE = r"""<!DOCTYPE html>
       });
 
       updateDropdownTriggerLabel();
+    }
+
+    // --- Voice Hub Modal (Search & Audition 400+ Voices) ---
+    let modalRegionFilter = 'All';
+
+    function openVoiceModal() {
+      const modal = document.getElementById('voiceModal');
+      if (!modal) return;
+      modal.classList.add('active');
+      const search = document.getElementById('modalVoiceSearch');
+      if (search) {
+        search.value = '';
+        setTimeout(() => search.focus(), 100);
+      }
+      renderModalVoiceGrid();
+    }
+
+    function closeVoiceModal() {
+      const modal = document.getElementById('voiceModal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    function setModalRegionFilter(region, btn) {
+      modalRegionFilter = region;
+      document.querySelectorAll('.modal-chip').forEach(c => c.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      filterModalVoices();
+    }
+
+    function renderModalVoiceGrid(voicesToRender = null) {
+      const grid = document.getElementById('modalVoiceGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const list = voicesToRender || allVoices;
+      list.forEach(v => {
+        const isSelected = v.ShortName === selectedVoiceId;
+        const isFem = v.Gender === 'Female';
+        const card = document.createElement('div');
+        card.className = `voice-hub-card ${isSelected ? 'selected' : ''}`;
+        card.innerHTML = `
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+              <span style="font-weight:700; font-size:13px; color:var(--text);">${escapeHtml(v.ShortName)}</span>
+              <span class="tag-gender ${isFem ? 'tag-female' : 'tag-male'}">${v.Gender}</span>
+            </div>
+            <div style="font-size:12px; color:var(--subtext); margin-bottom:4px;">${escapeHtml(v.FriendlyName)}</div>
+            <span class="opt-badge" style="background:rgba(0,210,255,0.1); color:var(--accent); font-weight:600;">${v.Locale}</span>
+          </div>
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <button class="btn-secondary" style="flex:1; padding:6px 8px; font-size:12px; justify-content:center;" onclick="auditionVoice('${escapeHtml(v.ShortName)}')">
+              <i class="fa-solid fa-volume-high"></i> Audition
+            </button>
+            <button class="btn-primary" style="flex:1; padding:6px 8px; font-size:12px; justify-content:center;" onclick="useVoiceFromModal('${escapeHtml(v.ShortName)}')">
+              <i class="fa-solid fa-check"></i> ${isSelected ? 'Selected' : 'Use Voice'}
+            </button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function filterModalVoices() {
+      const q = (document.getElementById('modalVoiceSearch').value || '').toLowerCase().trim();
+      const gender = document.getElementById('modalGenderFilter').value;
+
+      const filtered = allVoices.filter(v => {
+        const matchQuery = !q || v.ShortName.toLowerCase().includes(q) || v.Locale.toLowerCase().includes(q) || v.FriendlyName.toLowerCase().includes(q);
+        const matchGender = gender === 'All' || v.Gender === gender;
+        const matchRegion = modalRegionFilter === 'All' || v.Locale.startsWith(modalRegionFilter) || (modalRegionFilter === 'hi-IN' && v.Locale === 'hi-IN');
+        return matchQuery && matchGender && matchRegion;
+      });
+
+      renderModalVoiceGrid(filtered);
+    }
+
+    function useVoiceFromModal(voiceId) {
+      selectVoice(voiceId);
+      closeVoiceModal();
     }
 
     function selectVoice(voiceId) {
