@@ -1407,7 +1407,7 @@ class WebStudioHandler(BaseHTTPRequestHandler):
                     except queue.Empty:
                         self.wfile.write(b": keepalive\n\n")
                         self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
+            except (ConnectionError, BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
                 pass
             finally:
                 unregister_reload_subscriber(q)
@@ -1536,9 +1536,25 @@ class WebStudioHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
+    def handle(self) -> None:
+        try:
+            super().handle()
+        except (ConnectionError, BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
+            pass
+
     def log_message(self, format: str, *args: Any) -> None:
         # Keep console output neat
         pass
+
+
+class SilentThreadingHTTPServer(ThreadingHTTPServer):
+    """Threading HTTPServer that gracefully ignores client disconnects on SSE/aborted requests."""
+
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        exc_type, _, _ = sys.exc_info()
+        if exc_type and issubclass(exc_type, (ConnectionError, BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError)):
+            return  # Normal client disconnect (e.g. browser tab closed or refreshed)
+        super().handle_error(request, client_address)
 
 
 def run_web_studio(port: int = 7860, open_browser: bool = True) -> None:
@@ -1547,7 +1563,7 @@ def run_web_studio(port: int = 7860, open_browser: bool = True) -> None:
     start_file_watcher()
 
     server_address = ("", port)
-    httpd = ThreadingHTTPServer(server_address, WebStudioHandler)
+    httpd = SilentThreadingHTTPServer(server_address, WebStudioHandler)
     url = f"http://localhost:{port}"
 
     print("=" * 65)
@@ -1567,7 +1583,7 @@ def run_web_studio(port: int = 7860, open_browser: bool = True) -> None:
         httpd.server_close()
 
 
-
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 7860
     run_web_studio(port=port)
+
