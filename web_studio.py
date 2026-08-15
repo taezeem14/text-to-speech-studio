@@ -14,6 +14,7 @@ import asyncio
 import datetime
 import json
 import mimetypes
+import os
 import sys
 import threading
 import time
@@ -49,15 +50,32 @@ def touch_build_version() -> None:
         _CURRENT_BUILD_VERSION = int(time.time() * 1000)
 
 
-def start_file_watcher(watch_dir: Path = Path(".")) -> None:
+def restart_server() -> None:
+    """Restart current process to reload fresh Python bytecode and templates."""
+    print("⚡ [Hot-Reload] File modification detected. Reloading server engine...")
+    try:
+        time.sleep(0.2)
+        env = os.environ.copy()
+        env["TTS_HOT_RELOAD"] = "1"
+        python_exe = sys.executable
+        os.execve(python_exe, [python_exe] + sys.argv, env)
+    except Exception as e:
+        print(f"[Hot-Reload] Process reload error: {e}")
+
+
+def start_file_watcher(watch_dir: Path | None = None) -> None:
     """Watch python and asset files for modifications and trigger dynamic browser reloads."""
+    if watch_dir is None:
+        watch_dir = Path(__file__).parent.resolve()
+
     file_mtimes: Dict[str, float] = {}
 
     def _get_tracked_files() -> List[Path]:
         files: List[Path] = []
         for ext in ("*.py", "*.html", "*.css", "*.js", "*.json", "*.txt", "*.md"):
             for f in watch_dir.glob(ext):
-                if "web_output" not in str(f) and ".git" not in str(f) and "__pycache__" not in str(f):
+                f_name = f.name
+                if "web_output" not in str(f) and ".git" not in str(f) and "__pycache__" not in str(f) and not f_name.endswith(".tmp"):
                     files.append(f)
         return files
 
@@ -69,8 +87,9 @@ def start_file_watcher(watch_dir: Path = Path(".")) -> None:
             pass
 
     def _watcher_loop() -> None:
+        time.sleep(1.0)
         while True:
-            time.sleep(0.6)
+            time.sleep(0.5)
             changed = False
             current_files = _get_tracked_files()
             for f in current_files:
@@ -88,8 +107,10 @@ def start_file_watcher(watch_dir: Path = Path(".")) -> None:
 
             if changed:
                 touch_build_version()
+                restart_server()
 
     threading.Thread(target=_watcher_loop, daemon=True, name="HotReloadWatcher").start()
+
 
 
 HTML_PAGE = r"""<!DOCTYPE html>
@@ -1876,6 +1897,8 @@ class WebStudioHandler(BaseHTTPRequestHandler):
 
 class SilentThreadingHTTPServer(ThreadingHTTPServer):
     """Threading HTTPServer that gracefully ignores client disconnect errors."""
+    allow_reuse_address = True
+    daemon_threads = True
 
     def handle_error(self, request: Any, client_address: Any) -> None:
         exc_type, _, _ = sys.exc_info()
@@ -1905,14 +1928,18 @@ def run_web_studio(port: int = 7860, open_browser: bool = True) -> None:
 
     url = f"http://localhost:{active_port}"
 
-    print("=" * 65)
-    print(f"🎙️  Text to Speech Web Studio v2.0 is LIVE!")
-    print(f"🔗  URL: {url}")
-    print(f"⚡  Hot-Reload: Active (Dynamic file watch enabled)")
-    print(f"📁  Outputs: {STATIC_OUTPUT_DIR.resolve()}")
-    print("=" * 65)
+    is_hot_reload = os.environ.get("TTS_HOT_RELOAD") == "1"
+    if not is_hot_reload:
+        print("=" * 65)
+        print(f"🎙️  Text to Speech Web Studio v2.0 is LIVE!")
+        print(f"🔗  URL: {url}")
+        print(f"⚡  Hot-Reload: Active (Dynamic file watch enabled)")
+        print(f"📁  Outputs: {STATIC_OUTPUT_DIR.resolve()}")
+        print("=" * 65)
+    else:
+        print(f"⚡  [Hot-Reload] Server refreshed and live on {url}")
 
-    if open_browser:
+    if open_browser and not is_hot_reload:
         threading.Timer(1.0, lambda: webbrowser.open(url)).start()
 
     try:
