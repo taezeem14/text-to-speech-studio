@@ -8,11 +8,11 @@ No API keys. No accounts. No cost — just an internet connection.
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-windows%20%7C%20macOS%20%7C%20linux-lightgrey)](#installation)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/your-username/text-to-speech-studio/pulls)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/alwolfie/text-to-speech-studio/pulls)
 
 <!-- After creating your GitHub repo, add live badges, e.g.:
-[![GitHub stars](https://img.shields.io/github/stars/your-username/text-to-speech-studio?style=social)](https://github.com/your-username/text-to-speech-studio)
-[![GitHub contributors](https://img.shields.io/github/contributors/your-username/text-to-speech-studio)](https://github.com/your-username/text-to-speech-studio/graphs/contributors)
+[![GitHub stars](https://img.shields.io/github/stars/alwolfie/text-to-speech-studio?style=social)](https://github.com/alwolfie/text-to-speech-studio)
+[![GitHub contributors](https://img.shields.io/github/contributors/alwolfie/text-to-speech-studio)](https://github.com/alwolfie/text-to-speech-studio/graphs/contributors)
 -->
 
 </div>
@@ -57,7 +57,7 @@ No API keys. No accounts. No cost — just an internet connection.
 ## Installation
 
 ```bash
-git clone https://github.com/your-username/text-to-speech-studio.git
+git clone https://github.com/alwolfie/text-to-speech-studio.git
 cd text-to-speech-studio
 pip install -r requirements.txt
 ```
