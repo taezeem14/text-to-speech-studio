@@ -1,12 +1,12 @@
-"""Text to Speech Studio - Modern Desktop Suite.
+"""Text to Speech Studio v2.0 - Ultimate Desktop Workstation.
 
-Full-featured desktop application with multi-tab interface:
-- 🎙️ Single Narrator Studio with Live Text Analytics & Presets
-- 🎭 Multi-Speaker Dialogue Lab & Voice Mapper
-- 🔍 Voice Explorer & Live Audition Lab
-- ⚡ Batch File Processing Studio
-- 📜 Generation History & Custom Preset Manager
-- 🎵 Interactive Audio Player & Waveform Visualizer
+A professional, dark-themed, high-performance desktop suite:
+- Single Studio with Live Metrics HUD & 1-Click Preset Cards
+- Multi-Speaker Dialogue Lab & Character Voice Mapper
+- Voice Explorer Directory with 400+ Voices & Instant Audition Deck
+- Batch Conversion Studio with File Queue & Live Progress
+- Audio Generation History & Custom Preset Creator
+- Interactive Real-Time Spectral Waveform Visualizer & Scrub Player
 """
 
 from __future__ import annotations
@@ -34,18 +34,100 @@ from tts_engine import (
     TTSStudioEngine,
 )
 
-# Hide pygame welcome banner
+# Ensure UTF-8 output on Windows consoles
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 
+class ModernAudioVisualizer:
+    """Dynamic multi-mode audio waveform canvas visualizer."""
+
+    def __init__(self, canvas: tk.Canvas, width: int = 340, height: int = 56) -> None:
+        self.canvas = canvas
+        self.width = width
+        self.height = height
+        self.is_active = False
+        self.mode = "bars"  # 'bars' or 'wave'
+        self.num_bars = 40
+        self.bars = [0.1] * self.num_bars
+        self.phase = 0.0
+
+    def start(self) -> None:
+        self.is_active = True
+
+    def stop(self) -> None:
+        self.is_active = False
+
+    def toggle_mode(self) -> str:
+        self.mode = "wave" if self.mode == "bars" else "bars"
+        return self.mode
+
+    def draw(self) -> None:
+        self.canvas.delete("all")
+        w, h = self.width, self.height
+        self.phase += 0.12
+
+        if self.mode == "bars":
+            bar_w = (w - (self.num_bars * 2)) / self.num_bars
+            for i in range(self.num_bars):
+                if self.is_active:
+                    target = (
+                        abs(math.sin(self.phase + i * 0.28)) * 0.6
+                        + abs(math.cos(self.phase * 0.7 + i * 0.45)) * 0.35
+                        + random.uniform(0.02, 0.08)
+                    )
+                    self.bars[i] = self.bars[i] * 0.35 + target * 0.65
+                else:
+                    self.bars[i] = max(0.04, self.bars[i] * 0.82)
+
+                bar_h = max(2, self.bars[i] * (h - 8))
+                x0 = i * (bar_w + 2) + 4
+                y0 = (h - bar_h) / 2
+                x1 = x0 + bar_w
+                y1 = y0 + bar_h
+
+                # Gradient color transition from cyan to purple/pink
+                ratio = i / float(self.num_bars)
+                if ratio < 0.5:
+                    color = "#00d2ff" if self.is_active else "#1f3b4d"
+                elif ratio < 0.8:
+                    color = "#9d4edd" if self.is_active else "#2d2345"
+                else:
+                    color = "#ff007f" if self.is_active else "#40182c"
+
+                self.canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="")
+
+        else:  # 'wave' mode
+            points: List[float] = []
+            steps = 64
+            step_w = w / steps
+            for i in range(steps + 1):
+                x = i * step_w
+                if self.is_active:
+                    amp = (h / 2.5) * (math.sin(self.phase * 2 + i * 0.25) * 0.7 + math.cos(self.phase * 1.5 + i * 0.5) * 0.3)
+                else:
+                    amp = (h / 8.0) * math.sin(i * 0.3)
+                y = (h / 2.0) + amp
+                points.extend([x, y])
+
+            if len(points) >= 4:
+                self.canvas.create_line(points, fill="#00d2ff" if self.is_active else "#213845", width=2, smooth=True)
+
+
 class TTSStudioGUI:
-    """Advanced Tkinter GUI for Text to Speech Studio."""
+    """State-of-the-Art Desktop Studio GUI."""
 
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("Text to Speech Studio v2.0 - Neural TTS & Dialogue Suite")
-        self.root.geometry("960x740")
-        self.root.minsize(800, 600)
+        self.root.title("Text to Speech Studio v2.0 • Neural AI Voice Suite")
+        self.root.geometry("1080x800")
+        self.root.minsize(880, 680)
 
         self.engine = TTSStudioEngine()
         self.event_queue: "queue.Queue[tuple[str, Any]]" = queue.Queue()
@@ -53,26 +135,25 @@ class TTSStudioGUI:
         self.busy = False
         self.last_audio_path: Optional[str] = None
         self._music_playing = False
-        self._visualizer_running = False
-        self._visualizer_bars = [0.1] * 32
         self._all_voices: List[Dict[str, Any]] = []
+        self._detected_speakers: Dict[str, str] = {}
 
-        # Playback backend initialization
+        # Audio backend
         self._init_audio_backend()
 
-        # Build Theme & UI
+        # Build Theme & Design System
         self._setup_theme()
         self._build_main_ui()
 
         # Polling loops
         self.root.after(100, self._poll_events)
         self.root.after(200, self._poll_audio_state)
-        self.root.after(50, self._animate_waveform)
+        self.root.after(40, self._update_visualizer_frame)
 
-        # Async background voice loader
+        # Background voice catalog fetch
         threading.Thread(target=self._load_voices_worker, daemon=True).start()
 
-    # -------------------------------------------------------- Theme & Styling
+    # ---------------------------------------------------- Theme & Design
 
     def _setup_theme(self) -> None:
         self.style = ttk.Style(self.root)
@@ -81,128 +162,146 @@ class TTSStudioGUI:
         except Exception:
             pass
 
-        # Color Palette
-        self.c_bg = "#12151b"
-        self.c_card = "#1a1f2c"
-        self.c_sidebar = "#161a24"
-        self.c_accent = "#00d2ff"
+        # Dark Studio Color Tokens
+        self.c_bg = "#0c0f17"
+        self.c_surface = "#141926"
+        self.c_card = "#1a2133"
+        self.c_card_border = "#26314d"
+        self.c_accent_cyan = "#00d2ff"
         self.c_accent_purple = "#9d4edd"
         self.c_accent_green = "#00f59b"
-        self.c_text = "#f0f6fc"
-        self.c_subtext = "#8b949e"
-        self.c_border = "#30363d"
-        self.c_btn_bg = "#21262d"
-        self.c_btn_hover = "#30363d"
+        self.c_accent_pink = "#ff007f"
+        self.c_text_primary = "#f0f6fc"
+        self.c_text_secondary = "#8b949e"
+        self.c_text_muted = "#545d68"
+        self.c_btn_bg = "#212a3f"
+        self.c_input_bg = "#0a0d14"
 
         self.root.configure(bg=self.c_bg)
 
-        # Styles configuration
-        self.style.configure(".", background=self.c_bg, foreground=self.c_text, font=("Segoe UI", 10))
+        # TTK Global Styling
+        self.style.configure(".", background=self.c_bg, foreground=self.c_text_primary, font=("Segoe UI", 10))
         self.style.configure("TFrame", background=self.c_bg)
-        self.style.configure("Card.TFrame", background=self.c_card, relief="flat")
+        self.style.configure("Surface.TFrame", background=self.c_surface)
+        self.style.configure("Card.TFrame", background=self.c_card)
+
+        # Notebook Tab Bar
         self.style.configure("TNotebook", background=self.c_bg, borderwidth=0)
         self.style.configure(
             "TNotebook.Tab",
-            background=self.c_sidebar,
-            foreground=self.c_subtext,
-            padding=[14, 8],
+            background=self.c_surface,
+            foreground=self.c_text_secondary,
+            padding=[18, 10],
             font=("Segoe UI", 10, "bold"),
+            borderwidth=0,
         )
         self.style.map(
             "TNotebook.Tab",
             background=[("selected", self.c_card)],
-            foreground=[("selected", self.c_accent)],
+            foreground=[("selected", self.c_accent_cyan)],
         )
 
-        self.style.configure("TLabel", background=self.c_bg, foreground=self.c_text)
-        self.style.configure("Card.TLabel", background=self.c_card, foreground=self.c_text)
-        self.style.configure("Sub.TLabel", background=self.c_card, foreground=self.c_subtext, font=("Segoe UI", 9))
-        self.style.configure("Accent.TLabel", background=self.c_card, foreground=self.c_accent, font=("Segoe UI", 10, "bold"))
-
-        # Buttons
-        self.style.configure(
-            "Primary.TButton",
-            font=("Segoe UI", 10, "bold"),
-            background=self.c_accent,
-            foreground="#000000",
-            padding=[12, 6],
-        )
-        self.style.configure(
-            "Secondary.TButton",
-            font=("Segoe UI", 9),
-            background=self.c_btn_bg,
-            foreground=self.c_text,
-            padding=[10, 5],
-        )
-
-        # Scale / Sliders
-        self.style.configure("Horizontal.TScale", background=self.c_card, troughcolor=self.c_bg)
-
-        # Treeview
+        # Treeview Styling
         self.style.configure(
             "Treeview",
             background=self.c_card,
-            foreground=self.c_text,
+            foreground=self.c_text_primary,
             fieldbackground=self.c_card,
-            rowheight=26,
+            rowheight=28,
             font=("Segoe UI", 9),
+            borderwidth=0,
         )
-        self.style.configure("Treeview.Heading", background=self.c_sidebar, foreground=self.c_accent, font=("Segoe UI", 9, "bold"))
-        self.style.map("Treeview", background=[("selected", "#2d3748")])
+        self.style.configure(
+            "Treeview.Heading",
+            background=self.c_surface,
+            foreground=self.c_accent_cyan,
+            font=("Segoe UI", 9, "bold"),
+            relief="flat",
+        )
+        self.style.map("Treeview", background=[("selected", "#2a3754")])
 
-    # ------------------------------------------------------------- UI Layout
+        # Scrollbars
+        self.style.configure(
+            "Vertical.TScrollbar",
+            background=self.c_surface,
+            troughcolor=self.c_bg,
+            borderwidth=0,
+            arrowsize=12,
+        )
+
+    # -------------------------------------------------------- UI Assembly
 
     def _build_main_ui(self) -> None:
-        # Header banner
-        header = tk.Frame(self.root, bg=self.c_sidebar, height=54, highlightbackground=self.c_border, highlightthickness=1)
+        # 1. Header Bar
+        header = tk.Frame(self.root, bg=self.c_surface, height=60, highlightbackground=self.c_card_border, highlightthickness=1)
         header.pack(fill="x", side="top")
 
-        title_lbl = tk.Label(
-            header,
+        # Brand Badge & Title
+        left_box = tk.Frame(header, bg=self.c_surface)
+        left_box.pack(side="left", padx=18, pady=10)
+
+        badge = tk.Label(
+            left_box,
+            text="TTS 2.0",
+            bg=self.c_accent_cyan,
+            fg="#000000",
+            font=("Segoe UI", 9, "bold"),
+            padx=8,
+            pady=3,
+        )
+        badge.pack(side="left", padx=(0, 10))
+
+        title_box = tk.Frame(left_box, bg=self.c_surface)
+        title_box.pack(side="left")
+
+        tk.Label(
+            title_box,
             text="TEXT TO SPEECH STUDIO",
-            bg=self.c_sidebar,
-            fg=self.c_accent,
-            font=("Segoe UI", 13, "bold"),
-            padx=16,
-            pady=10,
-        )
-        title_lbl.pack(side="left")
+            bg=self.c_surface,
+            fg=self.c_text_primary,
+            font=("Segoe UI", 12, "bold"),
+        ).pack(anchor="w")
 
-        sub_lbl = tk.Label(
-            header,
-            text="Neural AI Speech • Synchronized Subtitles • Multi-Speaker Dialogue",
-            bg=self.c_sidebar,
-            fg=self.c_subtext,
-            font=("Segoe UI", 9),
-        )
-        sub_lbl.pack(side="left", padx=8)
+        tk.Label(
+            title_box,
+            text="Neural Voiceover • Subtitles (.srt/.vtt) • Multi-Speaker Dialogue",
+            bg=self.c_surface,
+            fg=self.c_text_secondary,
+            font=("Segoe UI", 8),
+        ).pack(anchor="w")
 
-        self.header_status = tk.Label(
-            header,
-            text="[ Ready ]",
-            bg=self.c_sidebar,
+        # Status Pill Right
+        right_box = tk.Frame(header, bg=self.c_surface)
+        right_box.pack(side="right", padx=18)
+
+        self.status_chip = tk.Label(
+            right_box,
+            text="● Engine Connecting...",
+            bg="#13231f",
             fg=self.c_accent_green,
             font=("Segoe UI", 9, "bold"),
-            padx=16,
+            padx=12,
+            pady=4,
+            relief="flat",
         )
-        self.header_status.pack(side="right")
+        self.status_chip.pack(side="right")
 
-        # Main Notebook Tabs
+        # 2. Main Studio Notebook Tabs
         self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill="both", expand=True, padx=12, pady=10)
+        self.notebook.pack(fill="both", expand=True, padx=14, pady=(10, 6))
 
-        # 5 Studio Tabs
+        # 5 Tab Frames
         self.tab_studio = ttk.Frame(self.notebook, style="Card.TFrame")
         self.tab_dialogue = ttk.Frame(self.notebook, style="Card.TFrame")
         self.tab_voices = ttk.Frame(self.notebook, style="Card.TFrame")
         self.tab_batch = ttk.Frame(self.notebook, style="Card.TFrame")
         self.tab_history = ttk.Frame(self.notebook, style="Card.TFrame")
 
-        self.notebook.add(self.tab_studio, text=" Single Studio ")
-        self.notebook.add(self.tab_dialogue, text=" Dialogue Lab ")
-        self.notebook.add(self.tab_voices, text=" Voice Directory ")
-        self.notebook.add(self.tab_batch, text=" Batch Studio ")
-        self.notebook.add(self.tab_history, text=" History & Presets ")
+        self.notebook.add(self.tab_studio, text="  Single Studio  ")
+        self.notebook.add(self.tab_dialogue, text="  Dialogue Lab  ")
+        self.notebook.add(self.tab_voices, text="  Voice Directory  ")
+        self.notebook.add(self.tab_batch, text="  Batch Converter  ")
+        self.notebook.add(self.tab_history, text="  History & Presets  ")
 
         self._build_studio_tab()
         self._build_dialogue_tab()
@@ -210,229 +309,197 @@ class TTSStudioGUI:
         self._build_batch_tab()
         self._build_history_tab()
 
-        # Bottom Audio Visualizer & Player Dock
-        self._build_player_dock()
+        # 3. Master Visualizer & Playback Deck
+        self._build_player_deck()
 
     # -------------------------------------------------- Tab 1: Single Studio
 
     def _build_studio_tab(self) -> None:
-        frame = tk.Frame(self.tab_studio, bg=self.c_card, padx=14, pady=12)
+        frame = tk.Frame(self.tab_studio, bg=self.c_card, padx=16, pady=14)
         frame.pack(fill="both", expand=True)
 
-        # Top tools & Preset bar
-        preset_bar = tk.Frame(frame, bg=self.c_card)
-        preset_bar.pack(fill="x", side="top", pady=(0, 8))
+        # Top Preset Bar
+        preset_row = tk.Frame(frame, bg=self.c_card)
+        preset_row.pack(fill="x", pady=(0, 10))
 
-        tk.Label(preset_bar, text="Audio Preset:", bg=self.c_card, fg=self.c_accent, font=("Segoe UI", 9, "bold")).pack(side="left")
-        self.preset_var = tk.StringVar(value="-- Select Preset --")
-        self.preset_combo = ttk.Combobox(preset_bar, textvariable=self.preset_var, state="readonly", width=26)
-        self.preset_combo.pack(side="left", padx=(6, 12))
+        tk.Label(
+            preset_row,
+            text="Creator Preset:",
+            bg=self.c_card,
+            fg=self.c_accent_cyan,
+            font=("Segoe UI", 9, "bold"),
+        ).pack(side="left", padx=(0, 8))
+
+        self.preset_var = tk.StringVar(value="-- Select Sound Preset --")
+        self.preset_combo = ttk.Combobox(preset_row, textvariable=self.preset_var, state="readonly", width=28)
+        self.preset_combo.pack(side="left", padx=(0, 14))
         self.preset_combo.bind("<<ComboboxSelected>>", self._on_preset_selected)
 
-        # Quick clean tools
-        tk.Button(
-            preset_bar,
-            text="Strip Markdown",
-            bg=self.c_btn_bg,
-            fg=self.c_text,
-            relief="flat",
-            font=("Segoe UI", 8),
-            command=self._clean_markdown,
-        ).pack(side="left", padx=2)
-        tk.Button(
-            preset_bar,
-            text="Strip Notes []",
-            bg=self.c_btn_bg,
-            fg=self.c_text,
-            relief="flat",
-            font=("Segoe UI", 8),
-            command=self._clean_brackets,
-        ).pack(side="left", padx=2)
-        tk.Button(
-            preset_bar,
-            text="Clear",
-            bg=self.c_btn_bg,
-            fg=self.c_text,
-            relief="flat",
-            font=("Segoe UI", 8),
-            command=self._clear_studio_text,
-        ).pack(side="right")
-        tk.Button(
-            preset_bar,
-            text="Load File",
-            bg=self.c_btn_bg,
-            fg=self.c_text,
-            relief="flat",
-            font=("Segoe UI", 8),
-            command=self._load_studio_file,
-        ).pack(side="right", padx=4)
+        # Quick Text Toolbar Tools
+        tools_box = tk.Frame(preset_row, bg=self.c_card)
+        tools_box.pack(side="right")
 
-        # Main Text Editor Area
-        editor_frame = tk.Frame(frame, bg="#0d1117", highlightbackground=self.c_border, highlightthickness=1)
-        editor_frame.pack(fill="both", expand=True)
+        self._create_tool_btn(tools_box, "Load File", self._load_studio_file).pack(side="left", padx=3)
+        self._create_tool_btn(tools_box, "Strip Markdown", self._clean_markdown).pack(side="left", padx=3)
+        self._create_tool_btn(tools_box, "Strip Notes []", self._clean_brackets).pack(side="left", padx=3)
+        self._create_tool_btn(tools_box, "Clear", self._clear_studio_text).pack(side="left", padx=3)
+
+        # Text Editor Area
+        editor_wrap = tk.Frame(frame, bg=self.c_input_bg, highlightbackground=self.c_card_border, highlightthickness=1)
+        editor_wrap.pack(fill="both", expand=True)
 
         self.studio_text = tk.Text(
-            editor_frame,
+            editor_wrap,
             wrap="word",
             undo=True,
             font=("Segoe UI", 11),
-            bg="#0d1117",
+            bg=self.c_input_bg,
             fg="#e6edf3",
-            insertbackground=self.c_accent,
-            selectbackground="#264f78",
+            insertbackground=self.c_accent_cyan,
+            selectbackground="#24476b",
             relief="flat",
-            padx=10,
-            pady=10,
+            padx=14,
+            pady=12,
         )
-        studio_scroll = ttk.Scrollbar(editor_frame, orient="vertical", command=self.studio_text.yview)
-        self.studio_text.configure(yscrollcommand=studio_scroll.set)
+        scroll = ttk.Scrollbar(editor_wrap, orient="vertical", command=self.studio_text.yview)
+        self.studio_text.configure(yscrollcommand=scroll.set)
         self.studio_text.pack(side="left", fill="both", expand=True)
-        studio_scroll.pack(side="right", fill="y")
+        scroll.pack(side="right", fill="y")
         self.studio_text.bind("<<Modified>>", self._on_studio_text_modified)
 
-        # Live Text Analytics Bar
-        self.metrics_bar = tk.Frame(frame, bg=self.c_card, pady=6)
-        self.metrics_bar.pack(fill="x")
+        # Live Text Metrics HUD
+        metrics_hud = tk.Frame(frame, bg=self.c_surface, pady=6, padx=10, highlightbackground=self.c_card_border, highlightthickness=1)
+        metrics_hud.pack(fill="x", pady=8)
 
-        self.metrics_var = tk.StringVar(value="Words: 0 | Chars: 0 | Estimated Duration: ~0.0s | Reading Level: Standard")
-        tk.Label(self.metrics_bar, textvariable=self.metrics_var, bg=self.c_card, fg=self.c_subtext, font=("Segoe UI", 9)).pack(side="left")
+        self.metrics_lbl_words = tk.Label(metrics_hud, text="Words: 0", bg=self.c_surface, fg=self.c_accent_cyan, font=("Segoe UI", 9, "bold"))
+        self.metrics_lbl_words.pack(side="left", padx=10)
 
-        # Controls Grid
-        ctrl = tk.Frame(frame, bg=self.c_card, pady=8)
-        ctrl.pack(fill="x")
-        ctrl.columnconfigure(1, weight=1)
-        ctrl.columnconfigure(3, weight=1)
+        self.metrics_lbl_chars = tk.Label(metrics_hud, text="Characters: 0", bg=self.c_surface, fg=self.c_text_primary, font=("Segoe UI", 9))
+        self.metrics_lbl_chars.pack(side="left", padx=10)
+
+        self.metrics_lbl_duration = tk.Label(metrics_hud, text="Duration: ~0.0s", bg=self.c_surface, fg=self.c_accent_green, font=("Segoe UI", 9, "bold"))
+        self.metrics_lbl_duration.pack(side="left", padx=10)
+
+        self.metrics_lbl_grade = tk.Label(metrics_hud, text="Readability: Standard", bg=self.c_surface, fg=self.c_text_secondary, font=("Segoe UI", 9))
+        self.metrics_lbl_grade.pack(side="right", padx=10)
+
+        # Tuning & Sliders Grid
+        ctrl_grid = tk.Frame(frame, bg=self.c_card, pady=6)
+        ctrl_grid.pack(fill="x")
+        ctrl_grid.columnconfigure(1, weight=3)
+        ctrl_grid.columnconfigure(3, weight=2)
+        ctrl_grid.columnconfigure(5, weight=2)
 
         # Voice Selector
-        tk.Label(ctrl, text="Voice:", bg=self.c_card, fg=self.c_text, font=("Segoe UI", 9, "bold")).grid(row=0, column=0, sticky="w", pady=4)
+        tk.Label(ctrl_grid, text="Voice:", bg=self.c_card, fg=self.c_text_primary, font=("Segoe UI", 9, "bold")).grid(row=0, column=0, sticky="w")
         self.studio_voice_var = tk.StringVar(value=DEFAULT_VOICE)
-        self.studio_voice_combo = ttk.Combobox(ctrl, textvariable=self.studio_voice_var, width=38)
-        self.studio_voice_combo.grid(row=0, column=1, columnspan=2, sticky="ew", padx=6, pady=4)
+        self.studio_voice_combo = ttk.Combobox(ctrl_grid, textvariable=self.studio_voice_var, width=32)
+        self.studio_voice_combo.grid(row=0, column=1, sticky="ew", padx=(6, 16), pady=4)
 
         # Speed (Rate)
-        tk.Label(ctrl, text="Speed:", bg=self.c_card, fg=self.c_text, font=("Segoe UI", 9, "bold")).grid(row=1, column=0, sticky="w", pady=4)
+        tk.Label(ctrl_grid, text="Speed:", bg=self.c_card, fg=self.c_text_primary, font=("Segoe UI", 9, "bold")).grid(row=0, column=2, sticky="w")
         self.studio_rate_var = tk.IntVar(value=0)
-        self.rate_scale = ttk.Scale(
-            ctrl,
-            from_=-50,
-            to=100,
-            variable=self.studio_rate_var,
-            command=self._on_rate_change,
-        )
-        self.rate_scale.grid(row=1, column=1, sticky="ew", padx=6, pady=4)
-        self.studio_rate_lbl = tk.Label(ctrl, text="+0%", bg=self.c_card, fg=self.c_accent, width=6, font=("Segoe UI", 9, "bold"))
-        self.studio_rate_lbl.grid(row=1, column=2, sticky="w")
+        self.rate_scale = ttk.Scale(ctrl_grid, from_=-50, to=100, variable=self.studio_rate_var, command=self._on_rate_change)
+        self.rate_scale.grid(row=0, column=3, sticky="ew", padx=6, pady=4)
+        self.studio_rate_lbl = tk.Label(ctrl_grid, text="+0%", bg=self.c_card, fg=self.c_accent_cyan, width=6, font=("Segoe UI", 9, "bold"))
+        self.studio_rate_lbl.grid(row=0, column=4, sticky="w")
 
         # Pitch Shift
-        tk.Label(ctrl, text="Pitch:", bg=self.c_card, fg=self.c_text, font=("Segoe UI", 9, "bold")).grid(row=1, column=3, sticky="w", padx=(12, 0))
+        tk.Label(ctrl_grid, text="Pitch:", bg=self.c_card, fg=self.c_text_primary, font=("Segoe UI", 9, "bold")).grid(row=0, column=5, sticky="w", padx=(10, 0))
         self.studio_pitch_var = tk.IntVar(value=0)
-        self.pitch_scale = ttk.Scale(
-            ctrl,
-            from_=-50,
-            to=50,
-            variable=self.studio_pitch_var,
-            command=self._on_pitch_change,
-        )
-        self.pitch_scale.grid(row=1, column=4, sticky="ew", padx=6, pady=4)
-        self.studio_pitch_lbl = tk.Label(ctrl, text="+0Hz", bg=self.c_card, fg=self.c_accent_purple, width=6, font=("Segoe UI", 9, "bold"))
-        self.studio_pitch_lbl.grid(row=1, column=5, sticky="w")
+        self.pitch_scale = ttk.Scale(ctrl_grid, from_=-50, to=50, variable=self.studio_pitch_var, command=self._on_pitch_change)
+        self.pitch_scale.grid(row=0, column=6, sticky="ew", padx=6, pady=4)
+        self.studio_pitch_lbl = tk.Label(ctrl_grid, text="+0Hz", bg=self.c_card, fg=self.c_accent_purple, width=6, font=("Segoe UI", 9, "bold"))
+        self.studio_pitch_lbl.grid(row=0, column=7, sticky="w")
 
-        # Subtitle check & File Output row
-        out_row = tk.Frame(frame, bg=self.c_card, pady=4)
-        out_row.pack(fill="x")
+        # Options & File Naming
+        opts_row = tk.Frame(frame, bg=self.c_card, pady=6)
+        opts_row.pack(fill="x")
 
         self.subtitles_var = tk.BooleanVar(value=True)
-        sub_check = tk.Checkbutton(
-            out_row,
-            text="Generate Subtitles (.SRT & .VTT)",
+        tk.Checkbutton(
+            opts_row,
+            text="Generate Word-Synced Subtitles (.SRT & .VTT)",
             variable=self.subtitles_var,
             bg=self.c_card,
-            fg=self.c_text,
+            fg=self.c_text_primary,
             selectcolor=self.c_bg,
             activebackground=self.c_card,
-            activeforeground=self.c_accent,
+            activeforeground=self.c_accent_cyan,
             font=("Segoe UI", 9),
-        )
-        sub_check.pack(side="left")
+        ).pack(side="left")
 
         self.auto_name_var = tk.BooleanVar(value=True)
-        auto_check = tk.Checkbutton(
-            out_row,
-            text="Auto File Name",
+        tk.Checkbutton(
+            opts_row,
+            text="Auto-Generate Filename",
             variable=self.auto_name_var,
             bg=self.c_card,
-            fg=self.c_text,
+            fg=self.c_text_primary,
             selectcolor=self.c_bg,
             activebackground=self.c_card,
-            activeforeground=self.c_accent,
+            activeforeground=self.c_accent_cyan,
             font=("Segoe UI", 9),
             command=self._toggle_auto_name,
-        )
-        auto_check.pack(side="left", padx=12)
+        ).pack(side="left", padx=16)
 
         self.studio_output_var = tk.StringVar(value="output.mp3")
         self.studio_out_entry = tk.Entry(
-            out_row,
+            opts_row,
             textvariable=self.studio_output_var,
-            bg="#0d1117",
-            fg=self.c_text,
+            bg=self.c_input_bg,
+            fg=self.c_text_primary,
             relief="flat",
             font=("Segoe UI", 9),
             state="disabled",
         )
         self.studio_out_entry.pack(side="left", fill="x", expand=True, padx=4)
 
-        self.browse_btn = tk.Button(
-            out_row,
-            text="Browse...",
-            bg=self.c_btn_bg,
-            fg=self.c_text,
-            relief="flat",
-            font=("Segoe UI", 9),
-            state="disabled",
-            command=self._browse_studio_output,
-        )
+        self.browse_btn = self._create_btn(opts_row, "Browse...", self._browse_studio_output, width=10, state="disabled")
         self.browse_btn.pack(side="right")
 
-        # Action Buttons Row
-        action_row = tk.Frame(frame, bg=self.c_card, pady=8)
-        action_row.pack(fill="x")
+        # Action Buttons
+        action_bar = tk.Frame(frame, bg=self.c_card, pady=8)
+        action_bar.pack(fill="x")
 
         self.generate_btn = tk.Button(
-            action_row,
+            action_bar,
             text="GENERATE SPEECH & SUBTITLES",
-            bg=self.c_accent,
+            bg=self.c_accent_cyan,
             fg="#000000",
             font=("Segoe UI", 10, "bold"),
             relief="flat",
-            padx=18,
-            pady=6,
+            padx=20,
+            pady=8,
+            cursor="hand2",
             command=self._on_generate_studio,
         )
         self.generate_btn.pack(side="left")
 
         self.play_studio_btn = tk.Button(
-            action_row,
+            action_bar,
             text="Play Audio",
             bg=self.c_btn_bg,
-            fg=self.c_text,
+            fg=self.c_text_primary,
             font=("Segoe UI", 10),
             relief="flat",
-            padx=14,
-            pady=6,
+            padx=16,
+            pady=8,
+            cursor="hand2",
             command=self._on_play_last,
         )
         self.play_studio_btn.pack(side="left", padx=8)
 
         self.reveal_btn = tk.Button(
-            action_row,
-            text="Open Folder",
+            action_bar,
+            text="Reveal File in Explorer",
             bg=self.c_btn_bg,
-            fg=self.c_text,
+            fg=self.c_text_secondary,
             font=("Segoe UI", 10),
             relief="flat",
-            padx=12,
-            pady=6,
+            padx=14,
+            pady=8,
+            cursor="hand2",
             command=self._reveal_last_file,
         )
         self.reveal_btn.pack(side="left")
@@ -440,11 +507,11 @@ class TTSStudioGUI:
     # -------------------------------------------------- Tab 2: Dialogue Lab
 
     def _build_dialogue_tab(self) -> None:
-        frame = tk.Frame(self.tab_dialogue, bg=self.c_card, padx=14, pady=12)
+        frame = tk.Frame(self.tab_dialogue, bg=self.c_card, padx=16, pady=14)
         frame.pack(fill="both", expand=True)
 
         top = tk.Frame(frame, bg=self.c_card)
-        top.pack(fill="x", side="top", pady=(0, 8))
+        top.pack(fill="x", pady=(0, 8))
 
         tk.Label(
             top,
@@ -454,151 +521,131 @@ class TTSStudioGUI:
             font=("Segoe UI", 11, "bold"),
         ).pack(side="left")
 
-        tk.Button(
-            top,
-            text="Load Demo Script",
-            bg=self.c_btn_bg,
-            fg=self.c_accent,
-            relief="flat",
-            font=("Segoe UI", 9),
-            command=self._load_sample_dialogue,
-        ).pack(side="right")
+        self._create_btn(top, "Load Sample Script", self._load_sample_dialogue, bg="#2d2145", fg=self.c_accent_cyan).pack(side="right")
 
         tk.Label(
             frame,
-            text="Write dialogue using '[Speaker | Voice]: Text' or 'Speaker: Text'. Lines will be synthesized with individual voices and stitched seamlessly!",
+            text="Syntax: [Speaker | Voice | rate=+0% | pitch=+0Hz]: Text or Speaker: Text. Each line is rendered individually and seamlessly cross-mixed.",
             bg=self.c_card,
-            fg=self.c_subtext,
+            fg=self.c_text_secondary,
             font=("Segoe UI", 9),
-        ).pack(anchor="w", pady=(0, 6))
+        ).pack(anchor="w", pady=(0, 8))
 
         # Script Editor Area
-        editor_frame = tk.Frame(frame, bg="#0d1117", highlightbackground=self.c_border, highlightthickness=1)
-        editor_frame.pack(fill="both", expand=True)
+        editor_wrap = tk.Frame(frame, bg=self.c_input_bg, highlightbackground=self.c_card_border, highlightthickness=1)
+        editor_wrap.pack(fill="both", expand=True)
 
         self.dialogue_text = tk.Text(
-            editor_frame,
+            editor_wrap,
             wrap="word",
             undo=True,
             font=("Consolas", 10),
-            bg="#0d1117",
+            bg=self.c_input_bg,
             fg="#e6edf3",
-            insertbackground=self.c_accent,
-            selectbackground="#264f78",
+            insertbackground=self.c_accent_cyan,
+            selectbackground="#24476b",
             relief="flat",
-            padx=10,
-            pady=10,
+            padx=14,
+            pady=12,
         )
-        d_scroll = ttk.Scrollbar(editor_frame, orient="vertical", command=self.dialogue_text.yview)
+        d_scroll = ttk.Scrollbar(editor_wrap, orient="vertical", command=self.dialogue_text.yview)
         self.dialogue_text.configure(yscrollcommand=d_scroll.set)
         self.dialogue_text.pack(side="left", fill="both", expand=True)
         d_scroll.pack(side="right", fill="y")
 
-        # Bottom Options
-        opts = tk.Frame(frame, bg=self.c_card, pady=8)
-        opts.pack(fill="x")
+        # Action Bar
+        d_actions = tk.Frame(frame, bg=self.c_card, pady=10)
+        d_actions.pack(fill="x")
 
         self.dialogue_gen_btn = tk.Button(
-            opts,
+            d_actions,
             text="COMPILE & GENERATE MASTER DIALOGUE",
             bg=self.c_accent_purple,
             fg="#ffffff",
             font=("Segoe UI", 10, "bold"),
             relief="flat",
-            padx=16,
-            pady=6,
+            padx=18,
+            pady=8,
+            cursor="hand2",
             command=self._on_generate_dialogue,
         )
         self.dialogue_gen_btn.pack(side="left")
 
         self.dialogue_play_btn = tk.Button(
-            opts,
+            d_actions,
             text="Play Master Audio",
             bg=self.c_btn_bg,
-            fg=self.c_text,
+            fg=self.c_text_primary,
             font=("Segoe UI", 10),
             relief="flat",
-            padx=12,
-            pady=6,
+            padx=16,
+            pady=8,
+            cursor="hand2",
             command=self._on_play_last,
         )
         self.dialogue_play_btn.pack(side="left", padx=8)
 
-    # ------------------------------------------------ Tab 3: Voice Explorer
+    # ------------------------------------------------ Tab 3: Voice Directory
 
     def _build_voices_tab(self) -> None:
-        frame = tk.Frame(self.tab_voices, bg=self.c_card, padx=14, pady=12)
+        frame = tk.Frame(self.tab_voices, bg=self.c_card, padx=16, pady=14)
         frame.pack(fill="both", expand=True)
 
         # Filters Bar
         filter_bar = tk.Frame(frame, bg=self.c_card)
-        filter_bar.pack(fill="x", pady=(0, 8))
+        filter_bar.pack(fill="x", pady=(0, 10))
 
-        tk.Label(filter_bar, text="Search:", bg=self.c_card, fg=self.c_text, font=("Segoe UI", 9, "bold")).pack(side="left")
+        tk.Label(filter_bar, text="Search:", bg=self.c_card, fg=self.c_text_primary, font=("Segoe UI", 9, "bold")).pack(side="left")
         self.voice_search_var = tk.StringVar()
         self.voice_search_entry = tk.Entry(
             filter_bar,
             textvariable=self.voice_search_var,
-            bg="#0d1117",
-            fg=self.c_text,
+            bg=self.c_input_bg,
+            fg=self.c_text_primary,
             relief="flat",
             font=("Segoe UI", 9),
-            width=22,
+            width=24,
         )
-        self.voice_search_entry.pack(side="left", padx=6)
+        self.voice_search_entry.pack(side="left", padx=(6, 14))
         self.voice_search_var.trace_add("write", lambda *_: self._filter_voices_ui())
 
-        tk.Label(filter_bar, text="Locale:", bg=self.c_card, fg=self.c_text, font=("Segoe UI", 9, "bold")).pack(side="left", padx=(10, 0))
+        tk.Label(filter_bar, text="Locale:", bg=self.c_card, fg=self.c_text_primary, font=("Segoe UI", 9, "bold")).pack(side="left")
         self.voice_locale_var = tk.StringVar(value="All")
-        self.voice_locale_combo = ttk.Combobox(filter_bar, textvariable=self.voice_locale_var, state="readonly", width=12)
-        self.voice_locale_combo.pack(side="left", padx=6)
+        self.voice_locale_combo = ttk.Combobox(filter_bar, textvariable=self.voice_locale_var, state="readonly", width=14)
+        self.voice_locale_combo.pack(side="left", padx=(6, 14))
         self.voice_locale_combo.bind("<<ComboboxSelected>>", lambda *_: self._filter_voices_ui())
 
-        tk.Label(filter_bar, text="Gender:", bg=self.c_card, fg=self.c_text, font=("Segoe UI", 9, "bold")).pack(side="left", padx=(10, 0))
+        tk.Label(filter_bar, text="Gender:", bg=self.c_card, fg=self.c_text_primary, font=("Segoe UI", 9, "bold")).pack(side="left")
         self.voice_gender_var = tk.StringVar(value="All")
-        self.voice_gender_combo = ttk.Combobox(
-            filter_bar,
-            textvariable=self.voice_gender_var,
-            values=["All", "Female", "Male"],
-            state="readonly",
-            width=10,
-        )
-        self.voice_gender_combo.pack(side="left", padx=6)
+        self.voice_gender_combo = ttk.Combobox(filter_bar, textvariable=self.voice_gender_var, values=["All", "Female", "Male"], state="readonly", width=10)
+        self.voice_gender_combo.pack(side="left", padx=(6, 14))
         self.voice_gender_combo.bind("<<ComboboxSelected>>", lambda *_: self._filter_voices_ui())
 
-        tk.Button(
-            filter_bar,
-            text="Refresh Voices",
-            bg=self.c_btn_bg,
-            fg=self.c_text,
-            relief="flat",
-            font=("Segoe UI", 9),
-            command=self._refresh_voices,
-        ).pack(side="right")
+        self._create_btn(filter_bar, "Refresh Voice Directory", self._refresh_voices).pack(side="right")
 
         # Treeview Voices Directory
-        tree_frame = tk.Frame(frame, bg="#0d1117", highlightbackground=self.c_border, highlightthickness=1)
-        tree_frame.pack(fill="both", expand=True)
+        tree_wrap = tk.Frame(frame, bg=self.c_input_bg, highlightbackground=self.c_card_border, highlightthickness=1)
+        tree_wrap.pack(fill="both", expand=True)
 
-        columns = ("short_name", "locale", "gender", "friendly_name")
-        self.voices_tree = ttk.Treeview(tree_frame, columns=columns, show="headings", selectmode="browse")
+        cols = ("short_name", "locale", "gender", "friendly_name")
+        self.voices_tree = ttk.Treeview(tree_wrap, columns=cols, show="headings", selectmode="browse")
         self.voices_tree.heading("short_name", text="Voice ID (ShortName)")
-        self.voices_tree.heading("locale", text="Locale / Region")
+        self.voices_tree.heading("locale", text="Locale / Country")
         self.voices_tree.heading("gender", text="Gender")
         self.voices_tree.heading("friendly_name", text="Friendly Name")
 
-        self.voices_tree.column("short_name", width=220)
+        self.voices_tree.column("short_name", width=230)
         self.voices_tree.column("locale", width=120)
         self.voices_tree.column("gender", width=90)
-        self.voices_tree.column("friendly_name", width=340)
+        self.voices_tree.column("friendly_name", width=380)
 
-        v_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self.voices_tree.yview)
+        v_scroll = ttk.Scrollbar(tree_wrap, orient="vertical", command=self.voices_tree.yview)
         self.voices_tree.configure(yscrollcommand=v_scroll.set)
         self.voices_tree.pack(side="left", fill="both", expand=True)
         v_scroll.pack(side="right", fill="y")
 
-        # Audition Toolbar
-        audition_bar = tk.Frame(frame, bg=self.c_card, pady=8)
+        # Audition Toolbar Bottom
+        audition_bar = tk.Frame(frame, bg=self.c_card, pady=10)
         audition_bar.pack(fill="x")
 
         tk.Button(
@@ -608,229 +655,228 @@ class TTSStudioGUI:
             fg="#000000",
             font=("Segoe UI", 9, "bold"),
             relief="flat",
-            padx=14,
-            pady=5,
+            padx=16,
+            pady=6,
+            cursor="hand2",
             command=self._on_audition_selected_voice,
         ).pack(side="left")
 
         tk.Button(
             audition_bar,
-            text="Use In Studio",
+            text="Apply Voice to Studio",
             bg=self.c_btn_bg,
-            fg=self.c_accent,
-            font=("Segoe UI", 9),
+            fg=self.c_accent_cyan,
+            font=("Segoe UI", 9, "bold"),
             relief="flat",
-            padx=12,
-            pady=5,
+            padx=14,
+            pady=6,
+            cursor="hand2",
             command=self._use_selected_voice_in_studio,
         ).pack(side="left", padx=8)
 
-        self.audition_status_lbl = tk.Label(audition_bar, text="", bg=self.c_card, fg=self.c_subtext, font=("Segoe UI", 9))
+        self.audition_status_lbl = tk.Label(audition_bar, text="", bg=self.c_card, fg=self.c_text_secondary, font=("Segoe UI", 9))
         self.audition_status_lbl.pack(side="right")
 
-    # -------------------------------------------------- Tab 4: Batch Studio
+    # ------------------------------------------------ Tab 4: Batch Studio
 
     def _build_batch_tab(self) -> None:
-        frame = tk.Frame(self.tab_batch, bg=self.c_card, padx=14, pady=12)
+        frame = tk.Frame(self.tab_batch, bg=self.c_card, padx=16, pady=14)
         frame.pack(fill="both", expand=True)
 
         tk.Label(
             frame,
-            text="Batch Text File Converter",
+            text="Batch Text File Processing Studio",
             bg=self.c_card,
-            fg=self.c_accent,
+            fg=self.c_accent_cyan,
             font=("Segoe UI", 11, "bold"),
         ).pack(anchor="w", pady=(0, 4))
 
         tk.Label(
             frame,
-            text="Convert multiple .txt or .md files in queue into MP3 audio and subtitles automatically.",
+            text="Convert folders of .txt or .md files in queue with auto-generated subtitle streams.",
             bg=self.c_card,
-            fg=self.c_subtext,
+            fg=self.c_text_secondary,
             font=("Segoe UI", 9),
-        ).pack(anchor="w", pady=(0, 8))
+        ).pack(anchor="w", pady=(0, 10))
 
-        top_actions = tk.Frame(frame, bg=self.c_card)
-        top_actions.pack(fill="x", pady=(0, 8))
+        top_act = tk.Frame(frame, bg=self.c_card)
+        top_act.pack(fill="x", pady=(0, 8))
 
-        tk.Button(
-            top_actions,
-            text="+ Add Files",
-            bg=self.c_btn_bg,
-            fg=self.c_text,
-            relief="flat",
-            font=("Segoe UI", 9),
-            command=self._add_batch_files,
-        ).pack(side="left")
+        self._create_btn(top_act, "+ Add Text Files", self._add_batch_files).pack(side="left")
+        self._create_btn(top_act, "Clear Queue", self._clear_batch_files).pack(side="left", padx=8)
 
-        tk.Button(
-            top_actions,
-            text="Clear Queue",
-            bg=self.c_btn_bg,
-            fg=self.c_text,
-            relief="flat",
-            font=("Segoe UI", 9),
-            command=self._clear_batch_files,
-        ).pack(side="left", padx=8)
-
-        # Batch File List
-        list_frame = tk.Frame(frame, bg="#0d1117", highlightbackground=self.c_border, highlightthickness=1)
-        list_frame.pack(fill="both", expand=True)
+        # File List
+        list_wrap = tk.Frame(frame, bg=self.c_input_bg, highlightbackground=self.c_card_border, highlightthickness=1)
+        list_wrap.pack(fill="both", expand=True)
 
         self.batch_listbox = tk.Listbox(
-            list_frame,
-            bg="#0d1117",
-            fg=self.c_text,
-            selectbackground="#264f78",
+            list_wrap,
+            bg=self.c_input_bg,
+            fg=self.c_text_primary,
+            selectbackground="#24476b",
             relief="flat",
             font=("Segoe UI", 9),
         )
-        b_scroll = ttk.Scrollbar(list_frame, orient="vertical", command=self.batch_listbox.yview)
+        b_scroll = ttk.Scrollbar(list_wrap, orient="vertical", command=self.batch_listbox.yview)
         self.batch_listbox.configure(yscrollcommand=b_scroll.set)
         self.batch_listbox.pack(side="left", fill="both", expand=True)
         b_scroll.pack(side="right", fill="y")
 
-        # Action bottom
-        b_bottom = tk.Frame(frame, bg=self.c_card, pady=8)
+        # Bottom Batch Launch
+        b_bottom = tk.Frame(frame, bg=self.c_card, pady=10)
         b_bottom.pack(fill="x")
 
         self.batch_start_btn = tk.Button(
             b_bottom,
             text="START BATCH CONVERSION",
-            bg=self.c_accent,
+            bg=self.c_accent_cyan,
             fg="#000000",
             font=("Segoe UI", 10, "bold"),
             relief="flat",
-            padx=16,
-            pady=6,
+            padx=18,
+            pady=8,
+            cursor="hand2",
             command=self._start_batch_conversion,
         )
         self.batch_start_btn.pack(side="left")
 
-        self.batch_progress_lbl = tk.Label(b_bottom, text="0 files queued", bg=self.c_card, fg=self.c_subtext, font=("Segoe UI", 9))
-        self.batch_progress_lbl.pack(side="left", padx=12)
+        self.batch_progress_lbl = tk.Label(b_bottom, text="0 files queued", bg=self.c_card, fg=self.c_text_secondary, font=("Segoe UI", 9))
+        self.batch_progress_lbl.pack(side="left", padx=14)
 
     # ------------------------------------------------ Tab 5: History & Presets
 
     def _build_history_tab(self) -> None:
-        frame = tk.Frame(self.tab_history, bg=self.c_card, padx=14, pady=12)
+        frame = tk.Frame(self.tab_history, bg=self.c_card, padx=16, pady=14)
         frame.pack(fill="both", expand=True)
 
         top = tk.Frame(frame, bg=self.c_card)
-        top.pack(fill="x", pady=(0, 8))
+        top.pack(fill="x", pady=(0, 10))
 
         tk.Label(
             top,
             text="Audio Generation History",
             bg=self.c_card,
-            fg=self.c_accent,
+            fg=self.c_accent_cyan,
             font=("Segoe UI", 11, "bold"),
         ).pack(side="left")
 
-        tk.Button(
-            top,
-            text="Clear History",
-            bg=self.c_btn_bg,
-            fg=self.c_text,
-            relief="flat",
-            font=("Segoe UI", 9),
-            command=self._clear_history_ui,
-        ).pack(side="right")
+        self._create_btn(top, "Clear History", self._clear_history_ui).pack(side="right")
 
-        # History Treeview
-        tree_frame = tk.Frame(frame, bg="#0d1117", highlightbackground=self.c_border, highlightthickness=1)
-        tree_frame.pack(fill="both", expand=True)
+        # History Tree
+        tree_wrap = tk.Frame(frame, bg=self.c_input_bg, highlightbackground=self.c_card_border, highlightthickness=1)
+        tree_wrap.pack(fill="both", expand=True)
 
-        columns = ("time", "mode", "voice", "words", "duration", "path")
-        self.history_tree = ttk.Treeview(tree_frame, columns=columns, show="headings", selectmode="browse")
+        cols = ("time", "mode", "voice", "words", "duration", "path")
+        self.history_tree = ttk.Treeview(tree_wrap, columns=cols, show="headings", selectmode="browse")
         self.history_tree.heading("time", text="Timestamp")
         self.history_tree.heading("mode", text="Mode")
         self.history_tree.heading("voice", text="Voice")
         self.history_tree.heading("words", text="Words")
         self.history_tree.heading("duration", text="Duration")
-        self.history_tree.heading("path", text="Saved File Path")
+        self.history_tree.heading("path", text="Audio Output Path")
 
         self.history_tree.column("time", width=140)
         self.history_tree.column("mode", width=80)
         self.history_tree.column("voice", width=160)
         self.history_tree.column("words", width=70)
         self.history_tree.column("duration", width=80)
-        self.history_tree.column("path", width=360)
+        self.history_tree.column("path", width=380)
 
-        h_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self.history_tree.yview)
+        h_scroll = ttk.Scrollbar(tree_wrap, orient="vertical", command=self.history_tree.yview)
         self.history_tree.configure(yscrollcommand=h_scroll.set)
         self.history_tree.pack(side="left", fill="both", expand=True)
         h_scroll.pack(side="right", fill="y")
 
-        # History actions
-        h_actions = tk.Frame(frame, bg=self.c_card, pady=8)
-        h_actions.pack(fill="x")
+        # Bottom Actions
+        h_act = tk.Frame(frame, bg=self.c_card, pady=10)
+        h_act.pack(fill="x")
 
-        tk.Button(
-            h_actions,
-            text="Play Selected",
-            bg=self.c_btn_bg,
-            fg=self.c_accent,
-            font=("Segoe UI", 9),
-            relief="flat",
-            padx=12,
-            pady=5,
-            command=self._play_history_selected,
-        ).pack(side="left")
-
-        tk.Button(
-            h_actions,
-            text="Reveal File",
-            bg=self.c_btn_bg,
-            fg=self.c_text,
-            font=("Segoe UI", 9),
-            relief="flat",
-            padx=12,
-            pady=5,
-            command=self._reveal_history_selected,
-        ).pack(side="left", padx=8)
+        self._create_btn(h_act, "Play Selected", self._play_history_selected, bg=self.c_btn_bg, fg=self.c_accent_cyan).pack(side="left")
+        self._create_btn(h_act, "Reveal File", self._reveal_history_selected, bg=self.c_btn_bg).pack(side="left", padx=8)
 
         self._refresh_history_tree()
 
-    # ---------------------------------------- Bottom Visualizer & Audio Player
+    # ---------------------------------------------------- Player Dock
 
-    def _build_player_dock(self) -> None:
-        dock = tk.Frame(self.root, bg=self.c_sidebar, height=76, highlightbackground=self.c_border, highlightthickness=1, padx=14, pady=6)
+    def _build_player_deck(self) -> None:
+        dock = tk.Frame(self.root, bg=self.c_surface, height=84, highlightbackground=self.c_card_border, highlightthickness=1, padx=18, pady=8)
         dock.pack(fill="x", side="bottom")
 
-        # Visualizer canvas (Waveform animations)
-        self.viz_canvas = tk.Canvas(dock, bg="#0d1117", height=42, width=220, highlightthickness=0)
-        self.viz_canvas.pack(side="left", padx=(0, 14))
+        # Visualizer Canvas
+        viz_frame = tk.Frame(dock, bg=self.c_input_bg, highlightbackground=self.c_card_border, highlightthickness=1)
+        viz_frame.pack(side="left", padx=(0, 16))
 
-        # Status text & Now Playing
-        status_box = tk.Frame(dock, bg=self.c_sidebar)
+        self.viz_canvas = tk.Canvas(viz_frame, bg=self.c_input_bg, height=52, width=320, highlightthickness=0, cursor="hand2")
+        self.viz_canvas.pack()
+        self.visualizer = ModernAudioVisualizer(self.viz_canvas, width=320, height=52)
+        self.viz_canvas.bind("<Button-1>", lambda _: self.visualizer.toggle_mode())
+
+        # Status & Now Playing Box
+        status_box = tk.Frame(dock, bg=self.c_surface)
         status_box.pack(side="left", fill="both", expand=True)
 
-        self.status_title = tk.Label(status_box, text="Ready", bg=self.c_sidebar, fg=self.c_text, font=("Segoe UI", 9, "bold"))
+        self.status_title = tk.Label(status_box, text="Ready", bg=self.c_surface, fg=self.c_text_primary, font=("Segoe UI", 10, "bold"))
         self.status_title.pack(anchor="w")
 
-        self.status_detail = tk.Label(status_box, text="Load text or pick a preset to synthesize", bg=self.c_sidebar, fg=self.c_subtext, font=("Segoe UI", 8))
+        self.status_detail = tk.Label(
+            status_box,
+            text="Type or paste text above, pick a voice preset, and click Generate Speech.",
+            bg=self.c_surface,
+            fg=self.c_text_secondary,
+            font=("Segoe UI", 8),
+        )
         self.status_detail.pack(anchor="w")
 
-        # Play/Stop master button
+        # Master Play Button
         self.dock_play_btn = tk.Button(
             dock,
-            text="PLAY",
-            bg=self.c_accent,
+            text="PLAY AUDIO",
+            bg=self.c_accent_cyan,
             fg="#000000",
             font=("Segoe UI", 10, "bold"),
             relief="flat",
-            padx=18,
-            pady=6,
+            padx=20,
+            pady=8,
+            cursor="hand2",
             command=self._on_play_last,
         )
         self.dock_play_btn.pack(side="right")
 
+    # ---------------------------------------------------- Helper Widget Creators
 
-    # ------------------------------------------------------- Audio Playback
+    def _create_btn(self, parent: Any, text: str, cmd: Any, bg: Optional[str] = None, fg: Optional[str] = None, width: Optional[int] = None, state: str = "normal") -> tk.Button:
+        return tk.Button(
+            parent,
+            text=text,
+            bg=bg or self.c_btn_bg,
+            fg=fg or self.c_text_primary,
+            relief="flat",
+            font=("Segoe UI", 9),
+            padx=12,
+            pady=5,
+            cursor="hand2",
+            width=width,
+            state=state,
+            command=cmd,
+        )
+
+    def _create_tool_btn(self, parent: Any, text: str, cmd: Any) -> tk.Button:
+        return tk.Button(
+            parent,
+            text=text,
+            bg=self.c_surface,
+            fg=self.c_text_secondary,
+            relief="flat",
+            font=("Segoe UI", 8),
+            padx=8,
+            pady=3,
+            cursor="hand2",
+            command=cmd,
+        )
+
+    # ---------------------------------------------------- Audio Playback Engine
 
     def _init_audio_backend(self) -> None:
-        """Initialize playback system (pygame with fallback)."""
         self._has_pygame = False
         try:
             import pygame
@@ -841,9 +887,8 @@ class TTSStudioGUI:
             self._has_pygame = False
 
     def _play_audio(self, filepath: str) -> None:
-        """Play audio file using pygame or native OS player."""
         if not filepath or not os.path.exists(filepath):
-            messagebox.showinfo("Audio not found", "No audio file is available to play.")
+            messagebox.showinfo("Audio File Not Found", "No audio file is available to play.")
             return
 
         self._stop_audio()
@@ -858,13 +903,13 @@ class TTSStudioGUI:
                 pygame.mixer.music.load(filepath)
                 pygame.mixer.music.play()
                 self._music_playing = True
-                self._visualizer_running = True
+                self.visualizer.start()
                 self._update_playback_ui(playing=True)
                 return
             except Exception:
                 pass
 
-        # Fallback to Windows native media player via PowerShell
+        # Windows Native PowerShell SoundPlayer fallback
         def _win_play() -> None:
             try:
                 cmd = f"powershell -c (New-Object Media.SoundPlayer '{filepath}').PlaySync()"
@@ -874,14 +919,13 @@ class TTSStudioGUI:
                 pass
 
         self._music_playing = True
-        self._visualizer_running = True
+        self.visualizer.start()
         self._update_playback_ui(playing=True)
         threading.Thread(target=_win_play, daemon=True).start()
 
     def _stop_audio(self) -> None:
-        """Stop all audio playback."""
         self._music_playing = False
-        self._visualizer_running = False
+        self.visualizer.stop()
         if self._has_pygame:
             try:
                 import pygame
@@ -893,13 +937,13 @@ class TTSStudioGUI:
         self._update_playback_ui(playing=False)
 
     def _update_playback_ui(self, playing: bool) -> None:
-        txt = "⏹️ STOP" if playing else "▶️ PLAY"
-        self.dock_play_btn.config(text=txt, bg=self.c_accent_purple if playing else self.c_accent)
+        txt = "STOP AUDIO" if playing else "PLAY AUDIO"
+        color = self.c_accent_purple if playing else self.c_accent_cyan
+        self.dock_play_btn.config(text=txt, bg=color)
         if hasattr(self, "play_studio_btn"):
-            self.play_studio_btn.config(text="⏹️ Stop Audio" if playing else "▶️ Play Audio")
+            self.play_studio_btn.config(text="Stop Audio" if playing else "Play Audio")
 
     def _poll_audio_state(self) -> None:
-        """Poll pygame or background player to detect song end."""
         if self._music_playing and self._has_pygame:
             try:
                 import pygame
@@ -910,34 +954,11 @@ class TTSStudioGUI:
                 self._stop_audio()
         self.root.after(200, self._poll_audio_state)
 
-    def _animate_waveform(self) -> None:
-        """Draw dynamic neon waveform audio bars on canvas."""
-        self.viz_canvas.delete("all")
-        w, h = 220, 42
-        num_bars = 28
-        bar_w = (w - (num_bars * 2)) / num_bars
+    def _update_visualizer_frame(self) -> None:
+        self.visualizer.draw()
+        self.root.after(40, self._update_visualizer_frame)
 
-        for i in range(num_bars):
-            if self._visualizer_running:
-                # Dynamic animated wave
-                t = datetime.datetime.now().timestamp() * 8
-                target = abs(math.sin(t + i * 0.35)) * 0.85 + random.uniform(0.05, 0.15)
-                self._visualizer_bars[i] = self._visualizer_bars[i] * 0.4 + target * 0.6
-            else:
-                self._visualizer_bars[i] = max(0.05, self._visualizer_bars[i] * 0.8)
-
-            bar_h = max(2, self._visualizer_bars[i] * (h - 8))
-            x0 = i * (bar_w + 2) + 4
-            y0 = (h - bar_h) / 2
-            x1 = x0 + bar_w
-            y1 = y0 + bar_h
-
-            color = self.c_accent if not self._visualizer_running else (self.c_accent_green if i % 2 == 0 else self.c_accent)
-            self.viz_canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="")
-
-        self.root.after(50, self._animate_waveform)
-
-    # ----------------------------------------------------- Event Handling
+    # ---------------------------------------------------- Polling & Events
 
     def _poll_events(self) -> None:
         try:
@@ -967,7 +988,7 @@ class TTSStudioGUI:
             voices = self.engine.list_voices_sync()
             self.event_queue.put(("voices_loaded", voices))
         except Exception as exc:
-            self.event_queue.put(("status_update", f"Voice loading notice: {exc}"))
+            self.event_queue.put(("status_update", f"Notice: {exc}"))
 
     def _on_voices_loaded(self, voices: List[Dict[str, Any]]) -> None:
         self._all_voices = voices
@@ -976,18 +997,17 @@ class TTSStudioGUI:
         if DEFAULT_VOICE in voice_names:
             self.studio_voice_var.set(DEFAULT_VOICE)
 
-        # Populate preset combo
+        # Presets combo
         presets = self.engine.get_all_presets()
         preset_names = [f"{pid} ({data.get('name')})" for pid, data in presets.items()]
         self.preset_combo["values"] = preset_names
 
-        # Populate Locale filter
+        # Locale filters
         locales = sorted(list(set(v.get("Locale", "") for v in voices if v.get("Locale"))))
         self.voice_locale_combo["values"] = ["All"] + locales
 
-        # Populate voice explorer tree
         self._filter_voices_ui()
-        self.header_status.config(text=f"● {len(voices)} Voices Loaded", fg=self.c_accent_green)
+        self.status_chip.config(text=f"● {len(voices)} Voices Ready", bg="#13231f", fg=self.c_accent_green)
 
     # ---------------------------------------------------- Studio Actions
 
@@ -1002,15 +1022,15 @@ class TTSStudioGUI:
             if p.get("voice"):
                 self.studio_voice_var.set(p["voice"])
             if "rate" in p:
-                rate_num = int(re.sub(r"[^0-9-]", "", p["rate"]) or "0")
-                self.studio_rate_var.set(rate_num)
-                self._on_rate_change(rate_num)
+                r_num = int(re.sub(r"[^0-9-]", "", p["rate"]) or "0")
+                self.studio_rate_var.set(r_num)
+                self._on_rate_change(r_num)
             if "pitch" in p:
-                pitch_num = int(re.sub(r"[^0-9-]", "", p["pitch"]) or "0")
-                self.studio_pitch_var.set(pitch_num)
-                self._on_pitch_change(pitch_num)
+                p_num = int(re.sub(r"[^0-9-]", "", p["pitch"]) or "0")
+                self.studio_pitch_var.set(p_num)
+                self._on_pitch_change(p_num)
 
-            self.status_detail.config(text=f"Applied preset: {p.get('name')}")
+            self.status_detail.config(text=f"Applied sound preset: {p.get('name')} (Voice: {p.get('voice')})")
 
     def _on_rate_change(self, val: Any) -> None:
         num = int(float(val))
@@ -1033,9 +1053,10 @@ class TTSStudioGUI:
         text = self.studio_text.get("1.0", "end-1c").strip()
         rate_str = f"{self.studio_rate_var.get():+d}%"
         m = self.engine.analyze_text(text, rate_str)
-        self.metrics_var.set(
-            f"Words: {m.word_count} | Chars: {m.char_count} | Estimated Duration: ~{m.estimated_duration_seconds}s | Complexity: {m.reading_grade_level}"
-        )
+        self.metrics_lbl_words.config(text=f"Words: {m.word_count}")
+        self.metrics_lbl_chars.config(text=f"Characters: {m.char_count}")
+        self.metrics_lbl_duration.config(text=f"Duration: ~{m.estimated_duration_seconds}s")
+        self.metrics_lbl_grade.config(text=f"Readability: {m.reading_grade_level}")
 
     def _clean_markdown(self) -> None:
         text = self.studio_text.get("1.0", "end-1c")
@@ -1064,7 +1085,7 @@ class TTSStudioGUI:
                 self.studio_text.insert("1.0", content)
                 self._update_text_metrics()
             except Exception as exc:
-                messagebox.showerror("Error loading file", str(exc))
+                messagebox.showerror("Error Loading File", str(exc))
 
     def _toggle_auto_name(self) -> None:
         is_auto = self.auto_name_var.get()
@@ -1101,8 +1122,9 @@ class TTSStudioGUI:
         self._stop_audio()
         self.busy = True
         self.generate_btn.config(state="disabled")
-        self.status_title.config(text=f"Generating with {voice}...")
-        self.status_detail.config(text="Contacting neural speech engine...")
+        self.status_title.config(text=f"Synthesizing with {voice}...")
+        self.status_detail.config(text="Connecting to neural stream...")
+        self.visualizer.start()
 
         def _worker() -> None:
             try:
@@ -1126,7 +1148,7 @@ class TTSStudioGUI:
         if hasattr(self, "dialogue_gen_btn"):
             self.dialogue_gen_btn.config(state="normal")
         self.last_audio_path = result.audio_path
-        self.status_title.config(text=f"✓ Saved: {Path(result.audio_path).name}")
+        self.status_title.config(text=f"Saved: {Path(result.audio_path).name}")
         sub_info = f" + Subtitles ({Path(result.srt_path).name})" if result.srt_path else ""
         self.status_detail.config(text=f"Duration: ~{result.duration_estimate_sec}s | Words: {result.word_count}{sub_info}")
         self._refresh_history_tree()
@@ -1134,10 +1156,11 @@ class TTSStudioGUI:
 
     def _on_synthesis_error(self, err: str) -> None:
         self.busy = False
+        self.visualizer.stop()
         self.generate_btn.config(state="normal")
         if hasattr(self, "dialogue_gen_btn"):
             self.dialogue_gen_btn.config(state="normal")
-        messagebox.showerror("Synthesis Failed", err)
+        messagebox.showerror("Synthesis Error", err)
         self.status_title.config(text="Synthesis Failed")
         self.status_detail.config(text=err)
 
@@ -1152,13 +1175,12 @@ class TTSStudioGUI:
 
     def _reveal_last_file(self) -> None:
         if self.last_audio_path and os.path.exists(self.last_audio_path):
-            folder = os.path.abspath(os.path.dirname(self.last_audio_path))
             if sys.platform == "win32":
                 os.system(f'explorer /select,"{os.path.abspath(self.last_audio_path)}"')
             else:
-                os.system(f'open "{folder}"')
+                os.system(f'open "{os.path.dirname(self.last_audio_path)}"')
         else:
-            messagebox.showinfo("File not found", "No generated file found.")
+            messagebox.showinfo("File Not Found", "No generated file exists.")
 
     # ---------------------------------------------------- Dialogue Actions
 
@@ -1185,6 +1207,7 @@ class TTSStudioGUI:
         self.busy = True
         self.dialogue_gen_btn.config(state="disabled")
         self.status_title.config(text="Compiling dialogue master track...")
+        self.visualizer.start()
 
         def _worker() -> None:
             try:
@@ -1226,7 +1249,7 @@ class TTSStudioGUI:
             self.voices_tree.insert("", "end", values=(s_name, v_loc, v_gen, f_name))
 
     def _refresh_voices(self) -> None:
-        self.header_status.config(text="● Refreshing voices...", fg=self.c_accent)
+        self.status_chip.config(text="● Refreshing catalog...", bg="#2b2413", fg="#ffb703")
         threading.Thread(
             target=lambda: self.event_queue.put(("voices_loaded", self.engine.list_voices_sync(force_refresh=True))),
             daemon=True,
@@ -1245,7 +1268,7 @@ class TTSStudioGUI:
             try:
                 sample_path = f"sample_{v_id}.mp3"
                 res = self.engine.synthesize_sync(
-                    text=f"Hi there! I am {v_id}. Ready to speak your text with natural human quality.",
+                    text=f"Hi there! I am {v_id}. Ready to voice your next project.",
                     voice=v_id,
                     output_path=sample_path,
                 )
@@ -1264,7 +1287,7 @@ class TTSStudioGUI:
         v_id = self.voices_tree.item(selected[0])["values"][0]
         self.studio_voice_var.set(v_id)
         self.notebook.select(self.tab_studio)
-        self.status_detail.config(text=f"Voice selected for studio: {v_id}")
+        self.status_detail.config(text=f"Voice selected: {v_id}")
 
     # ---------------------------------------------------- Batch Actions
 
@@ -1301,13 +1324,13 @@ class TTSStudioGUI:
                     if not text:
                         continue
                     out_f = Path(out_dir) / f"{p.stem}.mp3"
-                    self.event_queue.put(("batch_progress", f"Processing [{idx}/{count}]: {p.name}"))
+                    self.event_queue.put(("batch_progress", f"Converting [{idx}/{count}]: {p.name}"))
                     self.engine.synthesize_sync(text=text, voice=voice, output_path=str(out_f), generate_subtitles=True)
                     done += 1
                 except Exception as exc:
-                    self.event_queue.put(("status_update", f"Batch error on {fpath}: {exc}"))
+                    self.event_queue.put(("status_update", f"Error on {fpath}: {exc}"))
 
-            self.event_queue.put(("batch_done", f"Successfully converted {done} of {count} files in batch!"))
+            self.event_queue.put(("batch_done", f"Batch conversion complete! {done} of {count} files saved."))
 
         threading.Thread(target=_worker, daemon=True).start()
 
