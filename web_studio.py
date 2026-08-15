@@ -113,12 +113,15 @@ def start_file_watcher(watch_dir: Path | None = None) -> None:
 
 
 
+FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00d2ff"/><stop offset="100%" stop-color="#9d4edd"/></linearGradient><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0e1524"/><stop offset="100%" stop-color="#070a10"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#bg)" stroke="url(#g)" stroke-width="2.5"/><path d="M32 14c-4.4 0-8 3.6-8 8v12c0 4.4 3.6 8 8 8s8-3.6 8-8V22c0-4.4-3.6-8-8-8z" fill="url(#g)"/><path d="M18 30c0 7.7 6.3 14 14 14s14-6.3 14-14" fill="none" stroke="#00f59b" stroke-width="3.5" stroke-linecap="round"/><path d="M32 44v8M24 52h16" fill="none" stroke="#00f59b" stroke-width="3.5" stroke-linecap="round"/></svg>"""
+
 HTML_PAGE = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Text to Speech Studio v2.0 • Neural AI Voice Suite</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300d2ff'/%3E%3Cstop offset='100%25' stop-color='%239d4edd'/%3E%3C/linearGradient%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%230e1524'/%3E%3Cstop offset='100%25' stop-color='%23070a10'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23bg)' stroke='url(%23g)' stroke-width='2.5'/%3E%3Cpath d='M32 14c-4.4 0-8 3.6-8 8v12c0 4.4 3.6 8 8 8s8-3.6 8-8V22c0-4.4-3.6-8-8-8z' fill='url(%23g)'/%3E%3Cpath d='M18 30c0 7.7 6.3 14 14 14s14-6.3 14-14' fill='none' stroke='%2300f59b' stroke-width='3.5' stroke-linecap='round'/%3E%3Cpath d='M32 44v8M24 52h16' fill='none' stroke='%2300f59b' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1743,6 +1746,14 @@ class WebStudioHandler(BaseHTTPRequestHandler):
             self.send_header("Expires", "0")
             self.end_headers()
             self.wfile.write(HTML_PAGE.encode("utf-8"))
+            return
+
+        if path in ("/favicon.ico", "/favicon.svg"):
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "image/svg+xml")
+            self.send_header("Cache-Control", "public, max-age=86400")
+            self.end_headers()
+            self.wfile.write(FAVICON_SVG.encode("utf-8"))
             return
 
         if path == "/api/version":
