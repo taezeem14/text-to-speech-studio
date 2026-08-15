@@ -51,15 +51,15 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <style>
     :root {
       --bg: #0b0f17;
-      --card-bg: rgba(22, 28, 45, 0.75);
-      --card-border: rgba(255, 255, 255, 0.08);
+      --card-bg: #141a29;
+      --card-border: rgba(255, 255, 255, 0.09);
       --accent: #00d2ff;
       --accent-purple: #9d4edd;
       --accent-green: #00f59b;
-      --accent-glow: rgba(0, 210, 255, 0.35);
+      --accent-glow: rgba(0, 210, 255, 0.25);
       --text: #f0f6fc;
       --subtext: #8b949e;
-      --input-bg: rgba(13, 17, 23, 0.85);
+      --input-bg: #0d121c;
       --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
     }
@@ -68,22 +68,19 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
     body {
       background-color: var(--bg);
-      background-image: 
-        radial-gradient(at 0% 0%, rgba(0, 210, 255, 0.12) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(157, 78, 221, 0.12) 0px, transparent 50%);
       color: var(--text);
       font-family: var(--font-main);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      transform: translateZ(0);
     }
 
     /* Top Navbar */
     header {
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      background: rgba(11, 15, 23, 0.85);
+      background: #0f1422;
       border-bottom: 1px solid var(--card-border);
       padding: 14px 28px;
       display: flex;
@@ -92,6 +89,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       position: sticky;
       top: 0;
       z-index: 100;
+      transform: translateZ(0);
     }
 
     .brand {
@@ -136,7 +134,6 @@ HTML_PAGE = r"""<!DOCTYPE html>
       height: 7px;
       background: var(--accent-green);
       border-radius: 50%;
-      box-shadow: 0 0 8px var(--accent-green);
     }
 
     /* Container */
@@ -169,30 +166,29 @@ HTML_PAGE = r"""<!DOCTYPE html>
       padding: 8px 18px;
       border-radius: 10px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background 0.15s ease, color 0.15s ease;
       display: flex;
       align-items: center;
       gap: 8px;
     }
     .tab-btn:hover {
       color: var(--text);
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.05);
     }
     .tab-btn.active {
       color: var(--accent);
-      background: rgba(0, 210, 255, 0.1);
-      border-color: rgba(0, 210, 255, 0.25);
+      background: rgba(0, 210, 255, 0.12);
+      border-color: rgba(0, 210, 255, 0.3);
     }
 
     /* Studio Card */
     .glass-card {
       background: var(--card-bg);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
       border: 1px solid var(--card-border);
-      border-radius: 18px;
+      border-radius: 16px;
       padding: 24px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      contain: content;
     }
 
     .tab-content { display: none; }
@@ -223,7 +219,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       padding: 4px 10px;
       border-radius: 14px;
       cursor: pointer;
-      transition: 0.2s;
+      transition: color 0.15s ease, border-color 0.15s ease;
     }
     .preset-pill:hover, .preset-pill.active {
       color: var(--accent);
@@ -244,11 +240,10 @@ HTML_PAGE = r"""<!DOCTYPE html>
       padding: 16px;
       outline: none;
       resize: vertical;
-      transition: border-color 0.2s;
+      transition: border-color 0.15s;
     }
     textarea:focus {
       border-color: var(--accent);
-      box-shadow: 0 0 16px rgba(0, 210, 255, 0.15);
     }
 
     .metrics-bar {
@@ -499,23 +494,22 @@ HTML_PAGE = r"""<!DOCTYPE html>
       top: calc(100% + 6px);
       left: 0;
       right: 0;
-      background: rgba(16, 22, 36, 0.98);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
+      background: #111726;
       border: 1px solid var(--card-border);
       border-radius: 12px;
-      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 210, 255, 0.15);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
       z-index: 1000;
       opacity: 0;
       visibility: hidden;
-      transform: translateY(-8px) scale(0.98);
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transform: translateY(-6px);
+      transition: opacity 0.15s ease, transform 0.15s ease;
       padding: 8px;
+      contain: content;
     }
     .custom-select-wrapper.open .custom-dropdown-menu {
       opacity: 1;
       visibility: visible;
-      transform: translateY(0) scale(1);
+      transform: translateY(0);
     }
 
     .dropdown-search-box {
@@ -1165,27 +1159,49 @@ HTML_PAGE = r"""<!DOCTYPE html>
       }
     }
 
+    let isVisualizerRunning = false;
+
     function setupVisualizer() {
       canvas = document.getElementById('visualizer');
+      if (!canvas) return;
       canvasCtx = canvas.getContext('2d');
       const audio = document.getElementById('audioPlayer');
 
       audio.onplay = () => {
         if (!audioCtx) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          analyser = audioCtx.createAnalyser();
-          analyser.fftSize = 64;
-          sourceNode = audioCtx.createMediaElementSource(audio);
-          sourceNode.connect(analyser);
-          analyser.connect(audioCtx.destination);
-          dataArray = new Uint8Array(analyser.frequencyBinCount);
+          try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 64;
+            sourceNode = audioCtx.createMediaElementSource(audio);
+            sourceNode.connect(analyser);
+            analyser.connect(audioCtx.destination);
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+          } catch(e) {
+            console.warn('AudioContext init:', e);
+          }
         }
-        drawWaveform();
+        if (!isVisualizerRunning) {
+          isVisualizerRunning = true;
+          drawWaveform();
+        }
       };
+
+      audio.onpause = () => { isVisualizerRunning = false; };
+      audio.onended = () => { isVisualizerRunning = false; };
     }
 
     function drawWaveform() {
-      if (!analyser) return;
+      const audio = document.getElementById('audioPlayer');
+      if (!isVisualizerRunning || !analyser || (audio && (audio.paused || audio.ended))) {
+        isVisualizerRunning = false;
+        if (canvasCtx && canvas) {
+          canvasCtx.fillStyle = '#080b10';
+          canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        return;
+      }
+
       requestAnimationFrame(drawWaveform);
       analyser.getByteFrequencyData(dataArray);
 
@@ -1197,11 +1213,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
       for (let i = 0; i < dataArray.length; i++) {
         const barHeight = (dataArray[i] / 255) * (canvas.height - 4);
-        const gradient = canvasCtx.createLinearGradient(0, canvas.height, 0, 0);
-        gradient.addColorStop(0, '#00d2ff');
-        gradient.addColorStop(1, '#9d4edd');
-
-        canvasCtx.fillStyle = gradient;
+        canvasCtx.fillStyle = i < 16 ? '#00d2ff' : '#9d4edd';
         canvasCtx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
         x += barWidth + 1;
       }
