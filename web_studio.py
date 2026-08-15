@@ -14,15 +14,17 @@ import asyncio
 import json
 import mimetypes
 import os
+import queue
 import re
 import sys
 import threading
+import time
 import urllib.parse
 import webbrowser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 # Ensure UTF-8 output on Windows consoles
 if hasattr(sys.stdout, "reconfigure"):
@@ -37,6 +39,74 @@ from tts_engine import BUILTIN_PRESETS, DEFAULT_VOICE, TTSStudioEngine
 engine = TTSStudioEngine()
 STATIC_OUTPUT_DIR = Path("web_output")
 STATIC_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# Live Reload Subscriber Registry
+_reload_subscribers: Set[queue.Queue[str]] = set()
+_reload_lock = threading.Lock()
+
+
+def register_reload_subscriber() -> queue.Queue[str]:
+    q: queue.Queue[str] = queue.Queue()
+    with _reload_lock:
+        _reload_subscribers.add(q)
+    return q
+
+
+def unregister_reload_subscriber(q: queue.Queue[str]) -> None:
+    with _reload_lock:
+        _reload_subscribers.discard(q)
+
+
+def broadcast_reload() -> None:
+    with _reload_lock:
+        for q in list(_reload_subscribers):
+            try:
+                q.put_nowait("reload")
+            except Exception:
+                pass
+
+
+def start_file_watcher(watch_dir: Path = Path(".")) -> None:
+    """Watch python and asset files for modifications and trigger dynamic browser reloads."""
+    file_mtimes: Dict[str, float] = {}
+
+    def _get_tracked_files() -> List[Path]:
+        files: List[Path] = []
+        for ext in ("*.py", "*.html", "*.css", "*.js", "*.json", "*.txt", "*.md"):
+            for f in watch_dir.glob(ext):
+                if "web_output" not in str(f) and ".git" not in str(f) and "__pycache__" not in str(f):
+                    files.append(f)
+        return files
+
+    # Initialize baseline timestamps
+    for f in _get_tracked_files():
+        try:
+            file_mtimes[str(f)] = f.stat().st_mtime
+        except Exception:
+            pass
+
+    def _watcher_loop() -> None:
+        while True:
+            time.sleep(0.6)
+            changed = False
+            current_files = _get_tracked_files()
+            for f in current_files:
+                f_str = str(f)
+                try:
+                    mtime = f.stat().st_mtime
+                    if f_str not in file_mtimes:
+                        file_mtimes[f_str] = mtime
+                        changed = True
+                    elif file_mtimes[f_str] != mtime:
+                        file_mtimes[f_str] = mtime
+                        changed = True
+                except Exception:
+                    pass
+
+            if changed:
+                broadcast_reload()
+
+    threading.Thread(target=_watcher_loop, daemon=True, name="HotReloadWatcher").start()
 
 HTML_PAGE = r"""<!DOCTYPE html>
 <html lang="en">
@@ -1219,7 +1289,74 @@ HTML_PAGE = r"""<!DOCTYPE html>
       }
     }
 
-    window.onload = init;
+    // --- Dynamic State Auto-Save & Auto-Restore (localStorage) ---
+    function setupStatePersistence() {
+      const textInput = document.getElementById('textInput');
+      const dialogueInput = document.getElementById('dialogueInput');
+      const rateSlider = document.getElementById('rateSlider');
+      const pitchSlider = document.getElementById('pitchSlider');
+
+      // Auto-save on change
+      textInput.addEventListener('input', () => localStorage.setItem('tts_text', textInput.value));
+      if (dialogueInput) dialogueInput.addEventListener('input', () => localStorage.setItem('tts_dialogue', dialogueInput.value));
+      rateSlider.addEventListener('change', () => localStorage.setItem('tts_rate', rateSlider.value));
+      pitchSlider.addEventListener('change', () => localStorage.setItem('tts_pitch', pitchSlider.value));
+
+      // Restore saved values
+      const savedText = localStorage.getItem('tts_text');
+      if (savedText && textInput) {
+        textInput.value = savedText;
+      }
+      const savedDialogue = localStorage.getItem('tts_dialogue');
+      if (savedDialogue && dialogueInput) {
+        dialogueInput.value = savedDialogue;
+      }
+      const savedRate = localStorage.getItem('tts_rate');
+      if (savedRate && rateSlider) {
+        rateSlider.value = savedRate;
+        document.getElementById('rateLabel').textContent = (parseInt(savedRate) >= 0 ? '+' : '') + savedRate + '%';
+      }
+      const savedPitch = localStorage.getItem('tts_pitch');
+      if (savedPitch && pitchSlider) {
+        pitchSlider.value = savedPitch;
+        document.getElementById('pitchLabel').textContent = (parseInt(savedPitch) >= 0 ? '+' : '') + savedPitch + 'Hz';
+      }
+      const savedVoice = localStorage.getItem('tts_voice');
+      if (savedVoice) {
+        selectedVoiceId = savedVoice;
+      }
+    }
+
+    // --- Dynamic Live Hot-Reload (Server-Sent Events) ---
+    function setupLiveReload() {
+      if (!window.EventSource) return;
+      let evtSource;
+
+      function connect() {
+        evtSource = new EventSource('/api/livereload');
+        
+        evtSource.onmessage = (event) => {
+          if (event.data === 'reload') {
+            console.log('[Hot-Reload] Server signaled reload...');
+            window.location.reload();
+          }
+        };
+
+        evtSource.onerror = () => {
+          evtSource.close();
+          // Auto-reconnect when server restarts
+          setTimeout(connect, 1200);
+        };
+      }
+
+      connect();
+    }
+
+    window.onload = () => {
+      init();
+      setupStatePersistence();
+      setupLiveReload();
+    };
   </script>
 </body>
 </html>
@@ -1236,8 +1373,38 @@ class WebStudioHandler(BaseHTTPRequestHandler):
         if path in ("/", "/index.html"):
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
             self.end_headers()
             self.wfile.write(HTML_PAGE.encode("utf-8"))
+            return
+
+        if path == "/api/livereload":
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.send_header("Connection", "keep-alive")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+
+            q = register_reload_subscriber()
+            try:
+                self.wfile.write(b": connected\n\n")
+                self.wfile.flush()
+                while True:
+                    try:
+                        msg = q.get(timeout=15)
+                        if msg == "reload":
+                            self.wfile.write(b"data: reload\n\n")
+                            self.wfile.flush()
+                    except queue.Empty:
+                        self.wfile.write(b": keepalive\n\n")
+                        self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            finally:
+                unregister_reload_subscriber(q)
             return
 
         if path == "/api/voices":
@@ -1261,6 +1428,7 @@ class WebStudioHandler(BaseHTTPRequestHandler):
                 self.send_response(HTTPStatus.OK)
                 self.send_header("Content-Type", ctype or "application/octet-stream")
                 self.send_header("Content-Length", str(fpath.stat().st_size))
+                self.send_header("Cache-Control", "no-cache, must-revalidate")
                 self.end_headers()
                 with open(fpath, "rb") as f:
                     self.wfile.write(f.read())
@@ -1357,6 +1525,7 @@ class WebStudioHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(payload)
@@ -1367,7 +1536,10 @@ class WebStudioHandler(BaseHTTPRequestHandler):
 
 
 def run_web_studio(port: int = 7860, open_browser: bool = True) -> None:
-    """Launch the Web Studio HTTP server."""
+    """Launch the Web Studio HTTP server with Hot-Reload watcher."""
+    # Start dynamic file watcher for automatic hot-reloads
+    start_file_watcher()
+
     server_address = ("", port)
     httpd = ThreadingHTTPServer(server_address, WebStudioHandler)
     url = f"http://localhost:{port}"
@@ -1375,6 +1547,7 @@ def run_web_studio(port: int = 7860, open_browser: bool = True) -> None:
     print("=" * 65)
     print(f"🎙️  Text to Speech Web Studio v2.0 is LIVE!")
     print(f"🔗  URL: {url}")
+    print(f"⚡  Hot-Reload: Active (Dynamic file watch enabled)")
     print(f"📁  Outputs: {STATIC_OUTPUT_DIR.resolve()}")
     print("=" * 65)
 
@@ -1386,6 +1559,7 @@ def run_web_studio(port: int = 7860, open_browser: bool = True) -> None:
     except KeyboardInterrupt:
         print("\nStopping Web Studio...")
         httpd.server_close()
+
 
 
 if __name__ == "__main__":
