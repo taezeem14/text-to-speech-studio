@@ -425,6 +425,172 @@ HTML_PAGE = r"""<!DOCTYPE html>
     .tag-female { background: rgba(255, 105, 180, 0.15); color: #ff69b4; }
     .tag-male { background: rgba(0, 210, 255, 0.15); color: #00d2ff; }
 
+    /* Custom Scrollbar across the entire Studio */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(13, 17, 23, 0.7);
+      border-radius: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(0, 210, 255, 0.6), rgba(157, 78, 221, 0.6));
+      border-radius: 8px;
+      border: 2px solid rgba(13, 17, 23, 0.8);
+      transition: background 0.2s ease, box-shadow 0.2s ease;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #00d2ff, #9d4edd);
+      box-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
+    }
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0, 210, 255, 0.6) rgba(13, 17, 23, 0.7);
+    }
+
+    /* Custom JS Dropdown Styling */
+    .custom-select-wrapper {
+      position: relative;
+      user-select: none;
+      width: 100%;
+    }
+
+    .custom-select-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-height: 44px;
+    }
+    .custom-select-trigger:hover, .custom-select-wrapper.open .custom-select-trigger {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(0, 210, 255, 0.2);
+    }
+
+    .custom-select-trigger .selected-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .custom-select-trigger .arrow-icon {
+      color: var(--subtext);
+      font-size: 12px;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .custom-select-wrapper.open .custom-select-trigger .arrow-icon {
+      transform: rotate(180deg);
+      color: var(--accent);
+    }
+
+    .custom-dropdown-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      background: rgba(16, 22, 36, 0.98);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 210, 255, 0.15);
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px) scale(0.98);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      padding: 8px;
+    }
+    .custom-select-wrapper.open .custom-dropdown-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+
+    .dropdown-search-box {
+      position: relative;
+      margin-bottom: 8px;
+    }
+    .dropdown-search-box i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--subtext);
+      font-size: 13px;
+    }
+    .dropdown-search-input {
+      width: 100%;
+      background: rgba(10, 14, 22, 0.9);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      padding: 8px 12px 8px 34px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .dropdown-search-input:focus {
+      border-color: var(--accent);
+    }
+
+    .dropdown-options-list {
+      max-height: 260px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      scroll-behavior: smooth;
+    }
+
+    .dropdown-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-size: 13px;
+    }
+    .dropdown-option:hover {
+      background: rgba(0, 210, 255, 0.1);
+      color: var(--accent);
+    }
+    .dropdown-option.selected {
+      background: rgba(0, 210, 255, 0.15);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .dropdown-option .opt-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dropdown-option .opt-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--subtext);
+    }
+    .dropdown-option.selected .opt-badge {
+      background: rgba(0, 210, 255, 0.2);
+      color: var(--accent);
+    }
+
     /* Subtitles Box */
     .subtitles-preview {
       background: #080b10;
@@ -481,9 +647,27 @@ HTML_PAGE = r"""<!DOCTYPE html>
         </div>
 
         <div class="controls-grid">
-          <div class="control-item">
-            <label for="voiceSelect">Neural Voice</label>
-            <select id="voiceSelect"></select>
+          <div class="control-item" style="position: relative;">
+            <label>Neural Voice</label>
+            <input type="hidden" id="voiceSelect" value="en-US-ChristopherNeural">
+            <div class="custom-select-wrapper" id="customVoiceWrapper">
+              <div class="custom-select-trigger" id="customVoiceTrigger" onclick="toggleVoiceDropdown()">
+                <div class="selected-info" id="customVoiceLabel">
+                  <i class="fa-solid fa-microphone" style="color:var(--accent);"></i>
+                  <span id="selectedVoiceText">en-US-ChristopherNeural</span>
+                </div>
+                <i class="fa-solid fa-chevron-down arrow-icon"></i>
+              </div>
+              <div class="custom-dropdown-menu" id="customVoiceMenu">
+                <div class="dropdown-search-box">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input type="text" class="dropdown-search-input" id="dropdownSearch" placeholder="Filter voices by name or locale..." oninput="filterDropdownOptions()" onclick="event.stopPropagation()">
+                </div>
+                <div class="dropdown-options-list" id="customVoiceOptions">
+                  <!-- Populated dynamically via JS -->
+                </div>
+              </div>
+            </div>
           </div>
           <div class="control-item">
             <label>Speaking Speed: <span id="rateLabel" style="color:var(--accent);">+0%</span></label>
@@ -659,7 +843,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
     function applyPreset(pid) {
       const p = presets[pid];
       if (!p) return;
-      if (p.voice) document.getElementById('voiceSelect').value = p.voice;
+      if (p.voice) {
+        selectVoice(p.voice);
+      }
       if (p.rate) {
         const rVal = parseInt(p.rate) || 0;
         document.getElementById('rateSlider').value = rVal;
@@ -673,17 +859,131 @@ HTML_PAGE = r"""<!DOCTYPE html>
       updateMetrics();
     }
 
+    let selectedVoiceId = 'en-US-ChristopherNeural';
+
     function renderVoiceSelect() {
-      const select = document.getElementById('voiceSelect');
-      select.innerHTML = '';
+      const optionsList = document.getElementById('customVoiceOptions');
+      if (!optionsList) return;
+      optionsList.innerHTML = '';
+
       allVoices.forEach(v => {
-        const opt = document.createElement('option');
-        opt.value = v.ShortName;
-        opt.textContent = `${v.ShortName} (${v.Locale}, ${v.Gender})`;
-        if (v.ShortName === 'en-US-ChristopherNeural') opt.selected = true;
-        select.appendChild(opt);
+        const isSelected = v.ShortName === selectedVoiceId;
+        const opt = document.createElement('div');
+        opt.className = `dropdown-option ${isSelected ? 'selected' : ''}`;
+        opt.dataset.voice = v.ShortName;
+        opt.dataset.locale = v.Locale;
+        opt.dataset.gender = v.Gender;
+        opt.dataset.friendly = v.FriendlyName;
+        opt.onclick = () => selectVoice(v.ShortName);
+
+        const isFem = v.Gender === 'Female';
+        opt.innerHTML = `
+          <div class="opt-left">
+            <i class="fa-solid fa-microphone" style="color:${isFem ? '#ff69b4' : '#00d2ff'}; font-size:12px;"></i>
+            <span>${v.ShortName}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="opt-badge">${v.Locale}</span>
+            <span class="opt-badge" style="color:${isFem ? '#ff69b4' : '#00d2ff'};">${v.Gender}</span>
+            ${isSelected ? '<i class="fa-solid fa-check" style="color:var(--accent); font-size:11px; margin-left:4px;"></i>' : ''}
+          </div>
+        `;
+        optionsList.appendChild(opt);
+      });
+
+      updateDropdownTriggerLabel();
+    }
+
+    function selectVoice(voiceId) {
+      selectedVoiceId = voiceId;
+      document.getElementById('voiceSelect').value = voiceId;
+      updateDropdownTriggerLabel();
+
+      // Update active highlight in dropdown
+      document.querySelectorAll('#customVoiceOptions .dropdown-option').forEach(opt => {
+        if (opt.dataset.voice === voiceId) {
+          opt.classList.add('selected');
+          if (!opt.querySelector('.fa-check')) {
+            const rightDiv = opt.querySelector('div:last-child');
+            if (rightDiv) rightDiv.insertAdjacentHTML('beforeend', '<i class="fa-solid fa-check" style="color:var(--accent); font-size:11px; margin-left:4px;"></i>');
+          }
+        } else {
+          opt.classList.remove('selected');
+          const checkIcon = opt.querySelector('.fa-check');
+          if (checkIcon) checkIcon.remove();
+        }
+      });
+
+      closeVoiceDropdown();
+    }
+
+    function updateDropdownTriggerLabel() {
+      const v = allVoices.find(item => item.ShortName === selectedVoiceId);
+      const label = document.getElementById('selectedVoiceText');
+      if (label) {
+        if (v) {
+          label.innerHTML = `<b>${v.ShortName}</b> <span style="color:var(--subtext); font-size:12px; margin-left:6px;">(${v.Locale}, ${v.Gender})</span>`;
+        } else {
+          label.textContent = selectedVoiceId;
+        }
+      }
+    }
+
+    function toggleVoiceDropdown() {
+      const wrapper = document.getElementById('customVoiceWrapper');
+      const isOpen = wrapper.classList.contains('open');
+      if (isOpen) {
+        closeVoiceDropdown();
+      } else {
+        openVoiceDropdown();
+      }
+    }
+
+    function openVoiceDropdown() {
+      const wrapper = document.getElementById('customVoiceWrapper');
+      wrapper.classList.add('open');
+      const searchInput = document.getElementById('dropdownSearch');
+      if (searchInput) {
+        searchInput.value = '';
+        filterDropdownOptions();
+        setTimeout(() => searchInput.focus(), 50);
+      }
+    }
+
+    function closeVoiceDropdown() {
+      const wrapper = document.getElementById('customVoiceWrapper');
+      if (wrapper) wrapper.classList.remove('open');
+    }
+
+    function filterDropdownOptions() {
+      const q = document.getElementById('dropdownSearch').value.toLowerCase().trim();
+      const options = document.querySelectorAll('#customVoiceOptions .dropdown-option');
+      options.forEach(opt => {
+        const vName = (opt.dataset.voice || '').toLowerCase();
+        const vLoc = (opt.dataset.locale || '').toLowerCase();
+        const vFriendly = (opt.dataset.friendly || '').toLowerCase();
+        if (!q || vName.includes(q) || vLoc.includes(q) || vFriendly.includes(q)) {
+          opt.style.display = 'flex';
+        } else {
+          opt.style.display = 'none';
+        }
       });
     }
+
+    // Close custom dropdown when clicking outside or pressing Escape
+    document.addEventListener('click', (e) => {
+      const wrapper = document.getElementById('customVoiceWrapper');
+      if (wrapper && !wrapper.contains(e.target)) {
+        closeVoiceDropdown();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeVoiceDropdown();
+      }
+    });
+
 
     function renderVoiceTable(voices) {
       const tbody = document.getElementById('voiceTableBody');
@@ -697,11 +997,23 @@ HTML_PAGE = r"""<!DOCTYPE html>
           <td><span class="tag-gender ${isFem ? 'tag-female' : 'tag-male'}">${v.Gender}</span></td>
           <td style="color:var(--subtext);">${v.FriendlyName}</td>
           <td>
-            <button class="btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="auditionVoice('${v.ShortName}')"><i class="fa-solid fa-volume-high"></i> Audition</button>
+            <div style="display:flex; gap:6px;">
+              <button class="btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="auditionVoice('${v.ShortName}')"><i class="fa-solid fa-volume-high"></i> Audition</button>
+              <button class="btn-secondary" style="padding:4px 10px; font-size:11px; color:var(--accent); border-color:rgba(0,210,255,0.3);" onclick="useVoiceInStudio('${v.ShortName}')"><i class="fa-solid fa-check"></i> Use</button>
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
       });
+    }
+
+    function useVoiceInStudio(voiceId) {
+      selectVoice(voiceId);
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-studio').classList.add('active');
+      const studioTabBtn = document.querySelector('.tab-btn');
+      if (studioTabBtn) studioTabBtn.classList.add('active');
     }
 
     function filterVoicesTable() {
