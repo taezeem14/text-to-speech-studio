@@ -12,7 +12,6 @@ A professional, dark-themed, high-performance desktop suite:
 from __future__ import annotations
 
 import asyncio
-import datetime
 import math
 import os
 import queue
@@ -27,9 +26,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Any, Dict, List, Optional
 
 from tts_engine import (
-    BUILTIN_PRESETS,
     DEFAULT_VOICE,
-    HistoryItem,
     SynthesisResult,
     TTSStudioEngine,
 )
@@ -148,10 +145,25 @@ class TTSStudioGUI:
         # Polling loops
         self.root.after(100, self._poll_events)
         self.root.after(200, self._poll_audio_state)
+        
+        self._visualizer_scheduled = True
         self.root.after(40, self._update_visualizer_frame)
+
+        self._filename_timer = None
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         # Background voice catalog fetch
         threading.Thread(target=self._load_voices_worker, daemon=True).start()
+
+    def _on_close(self):
+        try:
+            if self._has_pygame:
+                import pygame
+                pygame.mixer.music.stop()
+                pygame.mixer.quit()
+        except Exception:
+            pass
+        self.root.destroy()
 
     # ---------------------------------------------------- Theme & Design
 
@@ -900,28 +912,47 @@ class TTSStudioGUI:
 
                 if not pygame.mixer.get_init():
                     pygame.mixer.init(frequency=24000)
+                try:
+                    pygame.mixer.music.unload()
+                except Exception:
+                    pass
                 pygame.mixer.music.load(filepath)
                 pygame.mixer.music.play()
                 self._music_playing = True
                 self.visualizer.start()
+                if not getattr(self, '_visualizer_scheduled', False):
+                    self._visualizer_scheduled = True
+                    self._update_visualizer_frame()
                 self._update_playback_ui(playing=True)
                 return
             except Exception:
                 pass
 
-        # Windows Native PowerShell SoundPlayer fallback
-        def _win_play() -> None:
+        # Cross-platform fallback
+        def _fallback_play() -> None:
             try:
-                cmd = f"powershell -c (New-Object Media.SoundPlayer '{filepath}').PlaySync()"
-                subprocess.run(cmd, shell=True)
+                if sys.platform == "win32":
+                    os.startfile(filepath)
+                elif sys.platform == "darwin":
+                    subprocess.Popen(["afplay", filepath])
+                else:
+                    for player in ["mpv", "ffplay", "aplay"]:
+                        try:
+                            subprocess.Popen([player, filepath])
+                            break
+                        except FileNotFoundError:
+                            continue
                 self.event_queue.put(("playback_ended", None))
             except Exception:
                 pass
 
         self._music_playing = True
         self.visualizer.start()
+        if not getattr(self, '_visualizer_scheduled', False):
+            self._visualizer_scheduled = True
+            self._update_visualizer_frame()
         self._update_playback_ui(playing=True)
-        threading.Thread(target=_win_play, daemon=True).start()
+        threading.Thread(target=_fallback_play, daemon=True).start()
 
     def _stop_audio(self) -> None:
         self._music_playing = False
@@ -932,6 +963,10 @@ class TTSStudioGUI:
 
                 if pygame.mixer.get_init():
                     pygame.mixer.music.stop()
+                    try:
+                        pygame.mixer.music.unload()
+                    except Exception:
+                        pass
             except Exception:
                 pass
         self._update_playback_ui(playing=False)
@@ -956,7 +991,10 @@ class TTSStudioGUI:
 
     def _update_visualizer_frame(self) -> None:
         self.visualizer.draw()
-        self.root.after(40, self._update_visualizer_frame)
+        if self.visualizer.is_active or any(h > 0.05 for h in getattr(self.visualizer, 'bars', [])):
+            self.root.after(40, self._update_visualizer_frame)
+        else:
+            self._visualizer_scheduled = False
 
     # ---------------------------------------------------- Polling & Events
 
@@ -978,7 +1016,8 @@ class TTSStudioGUI:
                     self.batch_progress_lbl.config(text=str(payload))
                 elif kind == "batch_done":
                     messagebox.showinfo("Batch Complete", str(payload))
-                    self.batch_start_btn.config(state="normal")
+                elif kind == "batch_finished_ui":
+                    self._set_busy(False)
         except queue.Empty:
             pass
         self.root.after(100, self._poll_events)
@@ -994,8 +1033,11 @@ class TTSStudioGUI:
         self._all_voices = voices
         voice_names = [v.get("ShortName", "") for v in voices]
         self.studio_voice_combo["values"] = voice_names
-        if DEFAULT_VOICE in voice_names:
-            self.studio_voice_var.set(DEFAULT_VOICE)
+        self.studio_voice_combo["values"] = voice_names
+        current = self.studio_voice_var.get()
+        if not current or current not in voice_names:
+            if DEFAULT_VOICE in voice_names:
+                self.studio_voice_var.set(DEFAULT_VOICE)
 
         # Presets combo
         presets = self.engine.get_all_presets()
@@ -1010,6 +1052,16 @@ class TTSStudioGUI:
         self.status_chip.config(text=f"● {len(voices)} Voices Ready", bg="#13231f", fg=self.c_accent_green)
 
     # ---------------------------------------------------- Studio Actions
+    
+    def _set_busy(self, busy: bool) -> None:
+        self.busy = busy
+        state = "disabled" if busy else "normal"
+        for btn in [self.generate_btn, getattr(self, "dialogue_gen_btn", None), getattr(self, "batch_start_btn", None)]:
+            if btn:
+                try:
+                    btn.config(state=state)
+                except Exception:
+                    pass
 
     def _on_preset_selected(self, _event: Any = None) -> None:
         val = self.preset_var.get()
@@ -1041,12 +1093,18 @@ class TTSStudioGUI:
         num = int(float(val))
         self.studio_pitch_lbl.config(text=f"{num:+d}Hz")
 
+    def _update_auto_filename(self) -> None:
+        if self.auto_name_var.get():
+            raw = self.studio_text.get("1.0", "end-1c").strip()
+            self.studio_output_var.set(self.engine.generate_auto_filename(raw))
+        self._filename_timer = None
+
     def _on_studio_text_modified(self, _event: Any = None) -> None:
         if self.studio_text.edit_modified():
             self._update_text_metrics()
-            if self.auto_name_var.get():
-                raw = self.studio_text.get("1.0", "end-1c").strip()
-                self.studio_output_var.set(self.engine.generate_auto_filename(raw))
+            if getattr(self, '_filename_timer', None):
+                self.root.after_cancel(self._filename_timer)
+            self._filename_timer = self.root.after(500, self._update_auto_filename)
             self.studio_text.edit_modified(False)
 
     def _update_text_metrics(self) -> None:
@@ -1120,8 +1178,7 @@ class TTSStudioGUI:
         gen_subs = self.subtitles_var.get()
 
         self._stop_audio()
-        self.busy = True
-        self.generate_btn.config(state="disabled")
+        self._set_busy(True)
         self.status_title.config(text=f"Synthesizing with {voice}...")
         self.status_detail.config(text="Connecting to neural stream...")
         self.visualizer.start()
@@ -1143,10 +1200,7 @@ class TTSStudioGUI:
         threading.Thread(target=_worker, daemon=True).start()
 
     def _on_synthesis_complete(self, result: SynthesisResult) -> None:
-        self.busy = False
-        self.generate_btn.config(state="normal")
-        if hasattr(self, "dialogue_gen_btn"):
-            self.dialogue_gen_btn.config(state="normal")
+        self._set_busy(False)
         self.last_audio_path = result.audio_path
         self.status_title.config(text=f"Saved: {Path(result.audio_path).name}")
         sub_info = f" + Subtitles ({Path(result.srt_path).name})" if result.srt_path else ""
@@ -1155,11 +1209,8 @@ class TTSStudioGUI:
         self._play_audio(result.audio_path)
 
     def _on_synthesis_error(self, err: str) -> None:
-        self.busy = False
+        self._set_busy(False)
         self.visualizer.stop()
-        self.generate_btn.config(state="normal")
-        if hasattr(self, "dialogue_gen_btn"):
-            self.dialogue_gen_btn.config(state="normal")
         messagebox.showerror("Synthesis Error", err)
         self.status_title.config(text="Synthesis Failed")
         self.status_detail.config(text=err)
@@ -1176,9 +1227,11 @@ class TTSStudioGUI:
     def _reveal_last_file(self) -> None:
         if self.last_audio_path and os.path.exists(self.last_audio_path):
             if sys.platform == "win32":
-                os.system(f'explorer /select,"{os.path.abspath(self.last_audio_path)}"')
+                subprocess.run(["explorer", f"/select,{os.path.abspath(self.last_audio_path)}"], shell=False)
+            elif sys.platform == "darwin":
+                subprocess.run(["open", os.path.dirname(self.last_audio_path)])
             else:
-                os.system(f'open "{os.path.dirname(self.last_audio_path)}"')
+                subprocess.run(["xdg-open", os.path.dirname(self.last_audio_path)])
         else:
             messagebox.showinfo("File Not Found", "No generated file exists.")
 
@@ -1204,8 +1257,7 @@ class TTSStudioGUI:
             return
 
         self._stop_audio()
-        self.busy = True
-        self.dialogue_gen_btn.config(state="disabled")
+        self._set_busy(True)
         self.status_title.config(text="Compiling dialogue master track...")
         self.visualizer.start()
 
@@ -1250,8 +1302,16 @@ class TTSStudioGUI:
 
     def _refresh_voices(self) -> None:
         self.status_chip.config(text="● Refreshing catalog...", bg="#2b2413", fg="#ffb703")
+
+        def _worker():
+            try:
+                voices = self.engine.list_voices_sync(force_refresh=True)
+                self.event_queue.put(("voices_loaded", voices))
+            except Exception as exc:
+                self.event_queue.put(("synthesis_error", f"Voice refresh failed: {exc}"))
+
         threading.Thread(
-            target=lambda: self.event_queue.put(("voices_loaded", self.engine.list_voices_sync(force_refresh=True))),
+            target=_worker,
             daemon=True,
         ).start()
 
@@ -1273,7 +1333,7 @@ class TTSStudioGUI:
                     output_path=sample_path,
                 )
                 self.last_audio_path = res.audio_path
-                self._play_audio(res.audio_path)
+                self.root.after(0, lambda p=res.audio_path: self._play_audio(p))
                 self.event_queue.put(("status_update", f"Auditioning: {v_id}"))
             except Exception as exc:
                 self.event_queue.put(("synthesis_error", str(exc)))
@@ -1302,6 +1362,8 @@ class TTSStudioGUI:
         self.batch_progress_lbl.config(text="0 files queued")
 
     def _start_batch_conversion(self) -> None:
+        if self.busy:
+            return
         count = self.batch_listbox.size()
         if count == 0:
             messagebox.showinfo("Queue Empty", "Add text files to the batch queue first.")
@@ -1313,24 +1375,27 @@ class TTSStudioGUI:
 
         files = [self.batch_listbox.get(i) for i in range(count)]
         voice = self.studio_voice_var.get() or DEFAULT_VOICE
-        self.batch_start_btn.config(state="disabled")
+        self._set_busy(True)
 
         def _worker() -> None:
-            done = 0
-            for idx, fpath in enumerate(files, 1):
-                try:
-                    p = Path(fpath)
-                    text = p.read_text(encoding="utf-8").strip()
-                    if not text:
-                        continue
-                    out_f = Path(out_dir) / f"{p.stem}.mp3"
-                    self.event_queue.put(("batch_progress", f"Converting [{idx}/{count}]: {p.name}"))
-                    self.engine.synthesize_sync(text=text, voice=voice, output_path=str(out_f), generate_subtitles=True)
-                    done += 1
-                except Exception as exc:
-                    self.event_queue.put(("status_update", f"Error on {fpath}: {exc}"))
+            try:
+                done = 0
+                for idx, fpath in enumerate(files, 1):
+                    try:
+                        p = Path(fpath)
+                        text = p.read_text(encoding="utf-8").strip()
+                        if not text:
+                            continue
+                        out_f = Path(out_dir) / f"{p.stem}.mp3"
+                        self.event_queue.put(("batch_progress", f"Converting [{idx}/{count}]: {p.name}"))
+                        self.engine.synthesize_sync(text=text, voice=voice, output_path=str(out_f), generate_subtitles=True)
+                        done += 1
+                    except Exception as exc:
+                        self.event_queue.put(("status_update", f"Error on {fpath}: {exc}"))
 
-            self.event_queue.put(("batch_done", f"Batch conversion complete! {done} of {count} files saved."))
+                self.event_queue.put(("batch_done", f"Batch conversion complete! {done} of {count} files saved."))
+            finally:
+                self.event_queue.put(("batch_finished_ui", None))
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -1361,9 +1426,11 @@ class TTSStudioGUI:
         audio_path = str(self.history_tree.item(selected[0])["values"][5])
         if os.path.exists(audio_path):
             if sys.platform == "win32":
-                os.system(f'explorer /select,"{os.path.abspath(audio_path)}"')
+                subprocess.run(["explorer", f"/select,{os.path.abspath(audio_path)}"], shell=False)
+            elif sys.platform == "darwin":
+                subprocess.run(["open", os.path.dirname(audio_path)])
             else:
-                os.system(f'open "{os.path.dirname(audio_path)}"')
+                subprocess.run(["xdg-open", os.path.dirname(audio_path)])
 
     def _clear_history_ui(self) -> None:
         if messagebox.askyesno("Clear History", "Are you sure you want to clear your generation history?"):

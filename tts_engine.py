@@ -13,9 +13,9 @@ import datetime
 import json
 import os
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 import edge_tts
 
@@ -201,9 +201,15 @@ class TTSStudioEngine:
         char_count = len(stripped)
         char_no_spaces = len(re.sub(r"\s+", "", stripped))
         words = re.findall(r"\b\w+\b", stripped)
-        word_count = len(words)
+        
+        # CJK fallback: if very few words detected but many characters, estimate by character count
+        cjk_chars = len(re.findall(r'[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]', stripped))
+        if cjk_chars > len(words) * 2:
+            word_count = max(len(words), cjk_chars)
+        else:
+            word_count = len(words)
 
-        sentences = [s for s in re.split(r"[.!?]+", stripped) if s.strip()]
+        sentences = [s for s in re.split(r'[.!?。！？।؟]+', stripped) if s.strip()]
         sentence_count = max(1, len(sentences))
 
         # Base speaking rate is ~150 words per minute (2.5 words/sec)
@@ -263,17 +269,27 @@ class TTSStudioEngine:
         try:
             voices = await edge_tts.list_voices()
             self._cached_voices = voices
-            with open(self.voices_cache_file, "w", encoding="utf-8") as f:
-                json.dump(voices, f, indent=2)
+            self._atomic_json_write(self.voices_cache_file, voices)
             return voices
         except Exception as exc:
             if self._cached_voices:
                 return self._cached_voices
-            raise RuntimeError(f"Failed to fetch voices: {exc}") from exc
+            if self.voices_cache_file.exists():
+                with open(self.voices_cache_file, "r", encoding="utf-8") as f:
+                    self._cached_voices = json.load(f)
+                return self._cached_voices
+            raise RuntimeError(f"Cannot list voices and no cache available: {exc}") from exc
 
     def list_voices_sync(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """Synchronous wrapper for list_voices."""
-        return asyncio.run(self.list_voices(force_refresh=force_refresh))
+        try:
+            return asyncio.run(self.list_voices(force_refresh=force_refresh))
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(self.list_voices(force_refresh=force_refresh))
+            finally:
+                loop.close()
 
     async def filter_voices(
         self,
@@ -307,6 +323,24 @@ class TTSStudioEngine:
 
     # ---------------------------------------------------------------- Synthesis
 
+    def _normalize_tts_param(self, value: str, suffix: str) -> str:
+        """Normalize rate/pitch/volume params to edge-tts format (+N% or +NHz)."""
+        value = value.strip()
+        if not value:
+            return f"+0{suffix}"
+        # Already properly formatted
+        if re.match(r'^[+-]\d+' + re.escape(suffix) + r'$', value):
+            return value
+        # Has number but missing sign
+        m = re.match(r'^(\d+)' + re.escape(suffix) + r'?$', value)
+        if m:
+            return f"+{m.group(1)}{suffix}"
+        # Negative without suffix
+        m = re.match(r'^(-\d+)' + re.escape(suffix) + r'?$', value)
+        if m:
+            return f"{m.group(1)}{suffix}"
+        return f"+0{suffix}"
+
     async def synthesize(
         self,
         text: str,
@@ -331,6 +365,10 @@ class TTSStudioEngine:
 
         if progress_cb:
             progress_cb(f"Connecting to neural speech service with voice {voice}...")
+
+        rate = self._normalize_tts_param(rate, '%')
+        pitch = self._normalize_tts_param(pitch, 'Hz')
+        volume = self._normalize_tts_param(volume, '%')
 
         communicate = edge_tts.Communicate(
             text=cleaned_text,
@@ -407,7 +445,14 @@ class TTSStudioEngine:
 
     def synthesize_sync(self, *args: Any, **kwargs: Any) -> SynthesisResult:
         """Synchronous wrapper for synthesize."""
-        return asyncio.run(self.synthesize(*args, **kwargs))
+        try:
+            return asyncio.run(self.synthesize(*args, **kwargs))
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(self.synthesize(*args, **kwargs))
+            finally:
+                loop.close()
 
     # -------------------------------------------------------- Dialogue Script
 
@@ -467,7 +512,7 @@ class TTSStudioEngine:
                 continue
 
             # Colon format: Speaker: Text
-            colon_match = re.match(r"^([A-Za-z0-9_\- ]+)\s*:\s*(.+)$", line_str)
+            colon_match = re.match(r"^([^\s:][^:]*?)\s*:\s*(.+)$", line_str)
             if colon_match:
                 speaker = colon_match.group(1).strip()
                 text_content = colon_match.group(2).strip()
@@ -561,7 +606,7 @@ class TTSStudioEngine:
                                 )
                                 srt_counter += 1
 
-            current_time_ms += seg_duration_ms + line.pause_after_ms
+            current_time_ms += seg_duration_ms
             total_words += len(re.findall(r"\b\w+\b", line.text))
             total_chars += len(line.text)
 
@@ -639,15 +684,13 @@ class TTSStudioEngine:
             "pitch": pitch,
             "volume": volume,
         }
-        with open(self.presets_file, "w", encoding="utf-8") as f:
-            json.dump(self._custom_presets, f, indent=2)
+        self._atomic_json_write(self.presets_file, self._custom_presets)
 
     def delete_custom_preset(self, preset_id: str) -> bool:
         """Delete a custom user preset."""
         if preset_id in self._custom_presets:
             del self._custom_presets[preset_id]
-            with open(self.presets_file, "w", encoding="utf-8") as f:
-                json.dump(self._custom_presets, f, indent=2)
+            self._atomic_json_write(self.presets_file, self._custom_presets)
             return True
         return False
 
@@ -701,8 +744,7 @@ class TTSStudioEngine:
         self._history.insert(0, item)
         self._history = self._history[:100]  # keep latest 100
         try:
-            with open(self.history_file, "w", encoding="utf-8") as f:
-                json.dump([asdict(h) for h in self._history], f, indent=2)
+            self._atomic_json_write(self.history_file, [asdict(h) for h in self._history])
         except Exception:
             pass
 
@@ -711,17 +753,32 @@ class TTSStudioEngine:
             try:
                 with open(self.history_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    return [HistoryItem(**item) for item in data]
+                    items = []
+                    for item in data:
+                        try:
+                            items.append(HistoryItem(**item))
+                        except (TypeError, KeyError):
+                            continue
+                    return items
             except Exception:
                 return []
         return []
 
     # ------------------------------------------------------------- Helpers
 
+    def _atomic_json_write(self, filepath: Path, data: Any) -> None:
+        """Write JSON atomically via temp file + rename."""
+        tmp_path = filepath.with_suffix('.tmp')
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        tmp_path.replace(filepath)
+
     @staticmethod
     def generate_auto_filename(text: str) -> str:
         """Create a sanitized readable file name from text + timestamp."""
-        words = re.sub(r"[^A-Za-z0-9 ]+", " ", text).split()
+        clean = re.sub(r'[^\w\s]+', ' ', text, flags=re.UNICODE)
+        clean = re.sub(r'[<>:"/\\|?*]+', '', clean)
+        words = clean.split()
         base = "_".join(words[:4])[:40].strip("_") or "speech"
         return f"{base}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
 
@@ -738,7 +795,7 @@ class TTSStudioEngine:
     @staticmethod
     def _srt_time_to_ms(srt_time: str) -> int:
         """Parse 'HH:MM:SS,mmm' to milliseconds."""
-        parts = re.split(r"[:,]", srt_time.strip())
+        parts = re.split(r"[:,.]", srt_time.strip())
         if len(parts) == 4:
             h, m, s, ms = map(int, parts)
             return (h * 3600 + m * 60 + s) * 1000 + ms

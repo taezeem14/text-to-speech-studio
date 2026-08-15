@@ -11,11 +11,9 @@ Run with:
 from __future__ import annotations
 
 import asyncio
+import datetime
 import json
 import mimetypes
-import os
-import queue
-import re
 import sys
 import threading
 import time
@@ -24,7 +22,7 @@ import webbrowser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List
 
 # Ensure UTF-8 output on Windows consoles
 if hasattr(sys.stdout, "reconfigure"):
@@ -34,7 +32,7 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-from tts_engine import BUILTIN_PRESETS, DEFAULT_VOICE, TTSStudioEngine
+from tts_engine import DEFAULT_VOICE, TTSStudioEngine
 
 engine = TTSStudioEngine()
 STATIC_OUTPUT_DIR = Path("web_output")
@@ -661,6 +659,22 @@ HTML_PAGE = r"""<!DOCTYPE html>
       margin-top: 14px;
       white-space: pre-wrap;
     }
+    @media (max-width: 768px) {
+      main { padding: 12px; }
+      .glass-card { padding: 16px; }
+      .tabs-nav { flex-wrap: wrap; gap: 6px; }
+      .tab-btn { font-size: 12px; padding: 8px 14px; }
+      .controls-grid { grid-template-columns: 1fr; }
+      .player-dock { flex-direction: column; align-items: stretch; }
+      .player-dock canvas { width: 100%; }
+      .player-dock audio { width: 100%; min-width: unset; }
+      header .brand h1 { font-size: 15px; }
+    }
+    @media (max-width: 480px) {
+      .presets-row { gap: 6px; }
+      .preset-pill { font-size: 11px; padding: 4px 8px; }
+      textarea { font-size: 13px; min-height: 120px; }
+    }
   </style>
 </head>
 <body>
@@ -677,10 +691,10 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
   <main>
     <div class="tabs-nav">
-      <button class="tab-btn active" onclick="switchTab('studio')"><i class="fa-solid fa-microphone-lines"></i> Single Studio</button>
-      <button class="tab-btn" onclick="switchTab('dialogue')"><i class="fa-solid fa-comments"></i> Dialogue Lab</button>
-      <button class="tab-btn" onclick="switchTab('voices')"><i class="fa-solid fa-list-ul"></i> Voice Directory</button>
-      <button class="tab-btn" onclick="switchTab('api')"><i class="fa-solid fa-code"></i> REST API</button>
+      <button class="tab-btn active" onclick="switchTab('studio', this)"><i class="fa-solid fa-microphone-lines"></i> Single Studio</button>
+      <button class="tab-btn" onclick="switchTab('dialogue', this)"><i class="fa-solid fa-comments"></i> Dialogue Lab</button>
+      <button class="tab-btn" onclick="switchTab('voices', this)"><i class="fa-solid fa-list-ul"></i> Voice Directory</button>
+      <button class="tab-btn" onclick="switchTab('api', this)"><i class="fa-solid fa-code"></i> REST API</button>
     </div>
 
     <!-- TAB 1: SINGLE STUDIO -->
@@ -747,7 +761,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
         </div>
 
         <div id="playerDock" class="player-dock" style="display: none;">
-          <canvas id="visualizer"></canvas>
+          <canvas id="visualizer" width="240" height="48"></canvas>
           <audio id="audioPlayer" controls></audio>
         </div>
 
@@ -860,11 +874,11 @@ HTML_PAGE = r"""<!DOCTYPE html>
     let presets = {};
     let audioCtx, analyser, dataArray, canvas, canvasCtx, sourceNode;
 
-    function switchTab(tabId) {
+    function switchTab(tabId, btn) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
       document.getElementById('tab-' + tabId).classList.add('active');
-      event.currentTarget.classList.add('active');
+      if (btn) btn.classList.add('active');
     }
 
     async function init() {
@@ -951,6 +965,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
     }
 
     function selectVoice(voiceId) {
+      localStorage.setItem('tts_voice', voiceId);
       selectedVoiceId = voiceId;
       document.getElementById('voiceSelect').value = voiceId;
       updateDropdownTriggerLabel();
@@ -1041,6 +1056,12 @@ HTML_PAGE = r"""<!DOCTYPE html>
     });
 
 
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
     function renderVoiceTable(voices) {
       const tbody = document.getElementById('voiceTableBody');
       tbody.innerHTML = '';
@@ -1048,14 +1069,14 @@ HTML_PAGE = r"""<!DOCTYPE html>
         const tr = document.createElement('tr');
         const isFem = v.Gender === 'Female';
         tr.innerHTML = `
-          <td style="font-family:var(--font-mono); font-weight:600; color:var(--accent);">${v.ShortName}</td>
-          <td>${v.Locale}</td>
-          <td><span class="tag-gender ${isFem ? 'tag-female' : 'tag-male'}">${v.Gender}</span></td>
-          <td style="color:var(--subtext);">${v.FriendlyName}</td>
+          <td style="font-family:var(--font-mono); font-weight:600; color:var(--accent);">${escapeHtml(v.ShortName)}</td>
+          <td>${escapeHtml(v.Locale)}</td>
+          <td><span class="tag-gender ${isFem ? 'tag-female' : 'tag-male'}">${escapeHtml(v.Gender)}</span></td>
+          <td style="color:var(--subtext);">${escapeHtml(v.FriendlyName)}</td>
           <td>
             <div style="display:flex; gap:6px;">
-              <button class="btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="auditionVoice('${v.ShortName}')"><i class="fa-solid fa-volume-high"></i> Audition</button>
-              <button class="btn-secondary" style="padding:4px 10px; font-size:11px; color:var(--accent); border-color:rgba(0,210,255,0.3);" onclick="useVoiceInStudio('${v.ShortName}')"><i class="fa-solid fa-check"></i> Use</button>
+              <button class="btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="auditionVoice('${escapeHtml(v.ShortName)}')"><i class="fa-solid fa-volume-high"></i> Audition</button>
+              <button class="btn-secondary" style="padding:4px 10px; font-size:11px; color:var(--accent); border-color:rgba(0,210,255,0.3);" onclick="useVoiceInStudio('${escapeHtml(v.ShortName)}')"><i class="fa-solid fa-check"></i> Use</button>
             </div>
           </td>
         `;
@@ -1239,6 +1260,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
             sourceNode.connect(analyser);
             analyser.connect(audioCtx.destination);
             dataArray = new Uint8Array(analyser.frequencyBinCount);
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
           } catch(e) {
             console.warn('AudioContext init:', e);
           }
@@ -1316,6 +1338,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       const savedVoice = localStorage.getItem('tts_voice');
       if (savedVoice) {
         selectedVoiceId = savedVoice;
+        document.getElementById('voiceSelect').value = savedVoice;
       }
     }
 
@@ -1398,6 +1421,10 @@ class WebStudioHandler(BaseHTTPRequestHandler):
         if path.startswith("/static/"):
             fname = path[len("/static/"):]
             fpath = STATIC_OUTPUT_DIR / fname
+            resolved = fpath.resolve()
+            if not resolved.is_relative_to(STATIC_OUTPUT_DIR.resolve()):
+                self.send_error(HTTPStatus.FORBIDDEN, "Access denied")
+                return
             if fpath.exists():
                 ctype, _ = mimetypes.guess_type(str(fpath))
                 self.send_response(HTTPStatus.OK)
@@ -1495,6 +1522,14 @@ class WebStudioHandler(BaseHTTPRequestHandler):
 
         self.send_error(HTTPStatus.NOT_FOUND, "API route not found")
 
+    def do_OPTIONS(self) -> None:
+        self.send_response(HTTPStatus.NO_CONTENT)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Max-Age", "86400")
+        self.end_headers()
+
     def _send_json(self, data: Any, status: int = 200) -> None:
         payload = json.dumps(data).encode("utf-8")
         self.send_response(status)
@@ -1517,7 +1552,7 @@ class WebStudioHandler(BaseHTTPRequestHandler):
 
 
 class SilentThreadingHTTPServer(ThreadingHTTPServer):
-    """Threading HTTPServer that gracefully ignores client disconnects on SSE/aborted requests."""
+    """Threading HTTPServer that gracefully ignores client disconnect errors."""
 
     def handle_error(self, request: Any, client_address: Any) -> None:
         exc_type, _, _ = sys.exc_info()

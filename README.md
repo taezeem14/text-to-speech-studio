@@ -227,7 +227,7 @@ python text_to_speech.py "Hello, welcome to my channel!"
 python text_to_speech.py --file narration.txt --preset podcast --srt
 
 # 3. Custom voice tuning (Rate, Pitch, Volume)
-python text_to_speech.py --text "Warning: System failure." --voice en-US-AnaNeural --rate +10% --pitch +20Hz --volume +15%
+python text_to_speech.py "Warning: System failure." --voice en-US-AnaNeural --rate +10% --pitch +20Hz --volume +15%
 
 # 4. Filter & audition voices
 python text_to_speech.py --list-voices --locale en-US --gender Female
