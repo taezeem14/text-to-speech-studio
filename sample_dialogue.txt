@@ -1,0 +1,20 @@
+# ==============================================================================
+# Text to Speech Studio - Sample Multi-Speaker Dialogue Script
+#
+# Syntax formats supported:
+#   [Speaker | Voice | rate=+0% | pitch=+0Hz]: Line text
+#   [Speaker | Voice]: Line text
+#   Speaker: Line text
+# ==============================================================================
+
+[Narrator | en-US-ChristopherNeural]: In a world crowded with expensive, complex voice models, a revolutionary studio emerged.
+
+[Alice | en-US-JennyNeural | rate=+5%]: Hey Bob! Did you see the new Text to Speech Studio? It has over 400 neural voices across 100 languages.
+
+[Bob | en-US-GuyNeural | rate=+0% | pitch=-4Hz]: Not only that, Alice! It automatically generates word-synced subtitles in both SRT and VTT formats with zero API keys required.
+
+[Alice | en-US-JennyNeural]: And we can create entire podcasts, audiobooks, and TikTok voiceovers in seconds?
+
+[Bob | en-US-GuyNeural | rate=+10%]: Absolutely. 100% free, unlimited, and high definition.
+
+[Narrator | en-US-ChristopherNeural]: Welcome to the next generation of voice synthesis.
