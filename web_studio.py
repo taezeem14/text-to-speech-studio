@@ -40,30 +40,15 @@ engine = TTSStudioEngine()
 STATIC_OUTPUT_DIR = Path("web_output")
 STATIC_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# Live Reload Subscriber Registry
-_reload_subscribers: Set[queue.Queue[str]] = set()
-_reload_lock = threading.Lock()
+# Hot-Reload Build State
+_CURRENT_BUILD_VERSION: int = int(time.time() * 1000)
+_build_lock = threading.Lock()
 
 
-def register_reload_subscriber() -> queue.Queue[str]:
-    q: queue.Queue[str] = queue.Queue()
-    with _reload_lock:
-        _reload_subscribers.add(q)
-    return q
-
-
-def unregister_reload_subscriber(q: queue.Queue[str]) -> None:
-    with _reload_lock:
-        _reload_subscribers.discard(q)
-
-
-def broadcast_reload() -> None:
-    with _reload_lock:
-        for q in list(_reload_subscribers):
-            try:
-                q.put_nowait("reload")
-            except Exception:
-                pass
+def touch_build_version() -> None:
+    global _CURRENT_BUILD_VERSION
+    with _build_lock:
+        _CURRENT_BUILD_VERSION = int(time.time() * 1000)
 
 
 def start_file_watcher(watch_dir: Path = Path(".")) -> None:
@@ -104,9 +89,10 @@ def start_file_watcher(watch_dir: Path = Path(".")) -> None:
                     pass
 
             if changed:
-                broadcast_reload()
+                touch_build_version()
 
     threading.Thread(target=_watcher_loop, daemon=True, name="HotReloadWatcher").start()
+
 
 HTML_PAGE = r"""<!DOCTYPE html>
 <html lang="en">
@@ -1333,29 +1319,35 @@ HTML_PAGE = r"""<!DOCTYPE html>
       }
     }
 
-    // --- Dynamic Live Hot-Reload (Server-Sent Events) ---
+    // --- Dynamic Live Hot-Reload Engine ---
     function setupLiveReload() {
-      if (!window.EventSource) return;
-      let evtSource;
+      let currentVersion = null;
+      let isChecking = false;
 
-      function connect() {
-        evtSource = new EventSource('/api/livereload');
-        
-        evtSource.onmessage = (event) => {
-          if (event.data === 'reload') {
-            console.log('[Hot-Reload] Server signaled reload...');
-            window.location.reload();
+      async function checkVersion() {
+        if (isChecking) return;
+        isChecking = true;
+        try {
+          const res = await fetch('/api/version?t=' + Date.now(), { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            if (currentVersion === null) {
+              currentVersion = data.version;
+            } else if (data.version && data.version !== currentVersion) {
+              console.log('[Hot-Reload] Changes detected! Reloading page...');
+              window.location.reload();
+              return;
+            }
           }
-        };
-
-        evtSource.onerror = () => {
-          evtSource.close();
-          // Auto-reconnect when server restarts
-          setTimeout(connect, 1200);
-        };
+        } catch (err) {
+          // Server may be restarting, will retry on next tick
+        } finally {
+          isChecking = false;
+          setTimeout(checkVersion, 800);
+        }
       }
 
-      connect();
+      setTimeout(checkVersion, 800);
     }
 
     window.onload = () => {
@@ -1386,31 +1378,8 @@ class WebStudioHandler(BaseHTTPRequestHandler):
             self.wfile.write(HTML_PAGE.encode("utf-8"))
             return
 
-        if path == "/api/livereload":
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "text/event-stream")
-            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
-            self.send_header("Connection", "keep-alive")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-
-            q = register_reload_subscriber()
-            try:
-                self.wfile.write(b": connected\n\n")
-                self.wfile.flush()
-                while True:
-                    try:
-                        msg = q.get(timeout=15)
-                        if msg == "reload":
-                            self.wfile.write(b"data: reload\n\n")
-                            self.wfile.flush()
-                    except queue.Empty:
-                        self.wfile.write(b": keepalive\n\n")
-                        self.wfile.flush()
-            except (ConnectionError, BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
-                pass
-            finally:
-                unregister_reload_subscriber(q)
+        if path == "/api/version":
+            self._send_json({"version": _CURRENT_BUILD_VERSION})
             return
 
         if path == "/api/voices":
