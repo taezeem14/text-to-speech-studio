@@ -548,21 +548,31 @@ HTML_PAGE = r"""<!DOCTYPE html>
       position: absolute;
       top: calc(100% + 6px);
       left: 0;
-      right: 0;
+      width: 100%;
+      min-width: 320px;
+      max-width: 480px;
       background: #111726;
-      border: 1px solid var(--card-border);
+      border: 1px solid rgba(0, 210, 255, 0.25);
       border-radius: 12px;
-      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 210, 255, 0.15);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0, 210, 255, 0.15);
       z-index: 1000;
       opacity: 0;
       visibility: hidden;
-      transform: translateY(-6px);
-      transition: opacity 0.15s ease, transform 0.15s ease;
+      transform: translateY(-8px);
+      transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s;
       padding: 10px;
     }
     .custom-select-wrapper.open .custom-dropdown-menu {
       opacity: 1;
       visibility: visible;
+      transform: translateY(0);
+    }
+    .custom-dropdown-menu.drop-up {
+      top: auto;
+      bottom: calc(100% + 6px);
+      transform: translateY(8px);
+    }
+    .custom-select-wrapper.open .custom-dropdown-menu.drop-up {
       transform: translateY(0);
     }
 
@@ -1012,12 +1022,33 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
     function openVoiceDropdown() {
       const wrapper = document.getElementById('customVoiceWrapper');
+      const menu = document.getElementById('customVoiceMenu');
+      if (!wrapper || !menu) return;
+
+      // Smart collision detection: if near bottom of screen, drop upwards!
+      const rect = wrapper.getBoundingClientRect();
+      const menuHeight = 320;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+
+      if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
+        menu.classList.add('drop-up');
+      } else {
+        menu.classList.remove('drop-up');
+      }
+
       wrapper.classList.add('open');
+
+      // Scroll into view if needed so it's fully visible
+      setTimeout(() => {
+        wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+
       const searchInput = document.getElementById('dropdownSearch');
       if (searchInput) {
         searchInput.value = '';
         filterDropdownOptions();
-        setTimeout(() => searchInput.focus(), 50);
+        setTimeout(() => searchInput.focus(), 80);
       }
     }
 
