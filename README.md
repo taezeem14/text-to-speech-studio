@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎙️ TEXT TO SPEECH STUDIO v2.0
+# TEXT TO SPEECH STUDIO v2.0
 ### *Next-Gen Neural AI Voice & Dialogue Creation Suite*
 
 **Zero API keys. Zero subscriptions. 400+ Studio-Grade Neural Voices. 100% Free & Unlimited.**
@@ -25,68 +25,68 @@
 
 **Built different.** Turn any script, book, article, or dialogue into ultra-realistic voiceovers with synchronized subtitles in milliseconds.
 
-[⚡ Quickstart](#quickstart) • [✨ Killer Features](#-killer-features) • [🎭 Dialogue Studio](#-multi-speaker-dialogue-lab) • [🎛️ Presets](#-curated-studio-presets) • [🌐 Web & Desktop UI](#-three-powerful-interfaces) • [⚡ REST API](#-developer-rest-api)
+[Quickstart](#quickstart) • [Features](#key-features) • [Dialogue Studio](#multi-speaker-dialogue-lab) • [Presets](#curated-studio-presets) • [Web & Desktop UI](#three-powerful-interfaces) • [REST API](#developer-rest-api)
 
 </div>
 
 ---
 
-## ⚡ The Benchmark: Why TTS Studio Hits Different
+## Benchmark: Why TTS Studio Hits Different
 
-| Feature / Metric | 🎙️ **TTS Studio v2.0** | 🤖 **ElevenLabs** | 🧠 **OpenAI TTS** | ☁️ **AWS Polly** | 🌐 **Google Cloud TTS** |
+| Feature / Metric | **TTS Studio v2.0** | **ElevenLabs** | **OpenAI TTS** | **AWS Polly** | **Google Cloud TTS** |
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | **Cost** | **$0.00 (Free Forever)** | $5 – $330+/mo | $0.015 / 1k chars | Pay-per-char | Pay-per-char |
-| **API Keys / Credit Card** | ❌ **Zero / No Account** | ✅ Required | ✅ Required | ✅ Required | ✅ Required |
+| **API Keys / Credit Card** | **Zero / No Account** | Required | Required | Required | Required |
 | **Voice Count** | **400+ Neural HD** | Custom / Limited | 6 Voices | ~60 Voices | ~100 Voices |
-| **Word-Synced Subtitles** | ✅ **Auto SRT & VTT** | ⚠️ Extra Cost/API | ❌ No | ⚠️ Complex JSON | ⚠️ Extra Config |
-| **Multi-Speaker Scripts** | ✅ **Native Dialogue Mixer** | ❌ Manual Stitching | ❌ No | ❌ No | ❌ No |
-| **Interfaces Included** | 🌐 **Web + 🖥️ GUI + ⚡ CLI** | Web Only | API Only | AWS Console | GCP Console |
+| **Word-Synced Subtitles** | **Auto SRT & VTT** | Extra Cost/API | No | Complex JSON | Extra Config |
+| **Multi-Speaker Scripts** | **Native Dialogue Mixer** | Manual Stitching | No | No | No |
+| **Interfaces Included** | **Web + Desktop GUI + CLI** | Web Only | API Only | AWS Console | GCP Console |
 | **Setup Time** | **< 30 seconds** | 5 mins | 5 mins | 20 mins (IAM) | 20 mins (IAM) |
 
 ---
 
-## ✨ Killer Features
+## Key Features
 
-- 🧠 **400+ Studio Neural Voices**: Broadcast-grade speech synthesis across 100+ global languages & dialects (US, UK, Hindi, Japanese, Spanish, French, German, and more).
-- 📝 **Word-Perfect Synchronized Subtitles**: Automatically extracts sentence and word boundary timestamps to generate ready-to-use `.srt` and `.vtt` subtitle files for video editing (Premiere, CapCut, DaVinci, Final Cut).
-- 🎭 **Multi-Speaker Dialogue Lab**: Write complex conversation scripts (`[Narrator]: ... [Alice]: ... [Bob]: ...`) and compile them into a seamless master dialogue track with individualized voices and custom pauses.
-- 🎛️ **Curated Creator Presets**: One-click audio presets optimized for TikToks, YouTube Shorts, True Crime Podcasts, Movie Trailers, ASMR, and Anime Dubs.
-- 📊 **Real-Time Text Analytics**: Live calculation of word count, character count, estimated speaking duration, and reading complexity grade.
-- 🖥️ **Three Unified Interfaces**:
+- **400+ Studio Neural Voices**: Broadcast-grade speech synthesis across 100+ global languages & dialects (US, UK, Hindi, Japanese, Spanish, French, German, and more).
+- **Word-Perfect Synchronized Subtitles**: Automatically extracts sentence and word boundary timestamps to generate ready-to-use `.srt` and `.vtt` subtitle files for video editing (Premiere, CapCut, DaVinci, Final Cut).
+- **Multi-Speaker Dialogue Lab**: Write complex conversation scripts (`[Narrator]: ... [Alice]: ... [Bob]: ...`) and compile them into a seamless master dialogue track with individualized voices and custom pauses.
+- **Curated Creator Presets**: One-click audio presets optimized for TikToks, YouTube Shorts, True Crime Podcasts, Movie Trailers, ASMR, and Anime Dubs.
+- **Real-Time Text Analytics**: Live calculation of word count, character count, estimated speaking duration, and reading complexity grade.
+- **Three Unified Interfaces**:
   1. **Glassmorphism Web Studio** with real-time Web Audio API frequency visualizer.
   2. **Dark-Themed Desktop GUI** with dynamic animated waveform canvas.
   3. **Supercharged Rich CLI** with JSON mode, batch folder processing, and automation scripting.
-- ⚡ **Zero Dependencies on External Cloud APIs**: No credit cards, token limits, rate limit paywalls, or billing shocks.
+- **Zero Dependencies on External Cloud APIs**: No credit cards, token limits, rate limit paywalls, or billing shocks.
 
 ---
 
-## 🏗️ Architecture & Pipeline
+## Architecture & Pipeline
 
 ```mermaid
 flowchart TD
-    subgraph Interfaces["🎨 Studio Interfaces"]
-        CLI["⚡ CLI (text_to_speech.py)"]
-        GUI["🖥️ Desktop GUI (tts_gui.py)"]
-        WEB["🌐 Web Studio (web_studio.py)"]
-        REST["🔌 REST API (/api/synthesize)"]
+    subgraph Interfaces["Studio Interfaces"]
+        CLI["CLI (text_to_speech.py)"]
+        GUI["Desktop GUI (tts_gui.py)"]
+        WEB["Web Studio (web_studio.py)"]
+        REST["REST API (/api/synthesize)"]
     end
 
-    subgraph CoreEngine["🧠 TTS Studio Engine (tts_engine.py)"]
+    subgraph CoreEngine["TTS Studio Engine (tts_engine.py)"]
         PARSER["Script & Dialogue Parser"]
         METRICS["Text Analytics & WPM Estimator"]
         PRESETS["Audio Preset Matrix (Pitch/Rate/Volume)"]
         CATALOG["Voice Explorer & 400+ Neural Catalog"]
     end
 
-    subgraph EdgeService["☁️ Microsoft Edge Neural Stream"]
+    subgraph EdgeService["Microsoft Edge Neural Stream"]
         STREAM["WebSocket Neural Synthesis Stream"]
     end
 
-    subgraph OutputPipeline["📦 Output & Post-Processing"]
-        AUDIO["🎵 24kHz HD Audio (MP3 / WAV)"]
-        SRT["📝 Synchronized Subtitles (.srt)"]
-        VTT["📄 WebVTT Subtitles (.vtt)"]
-        HIST["📜 Generation History & Metadata"]
+    subgraph OutputPipeline["Output & Post-Processing"]
+        AUDIO["24kHz HD Audio (MP3 / WAV)"]
+        SRT["Synchronized Subtitles (.srt)"]
+        VTT["WebVTT Subtitles (.vtt)"]
+        HIST["Generation History & Metadata"]
     end
 
     CLI --> CoreEngine
@@ -100,7 +100,7 @@ flowchart TD
 
 ---
 
-## 🚀 Quickstart
+## Quickstart
 
 ### 1. Installation
 
@@ -117,21 +117,21 @@ pip install -r requirements.txt
 
 Choose your preferred way to work:
 
-#### Option A: 🌐 Web Studio (Browser Edition)
+#### Option A: Web Studio (Browser Edition)
 ```bash
 python web_studio.py
 # Or on Windows, double click start_web.bat
 ```
 *Opens an interactive glassmorphism web workstation at `http://localhost:7860` with real-time visualizers, script creators, and downloads.*
 
-#### Option B: 🖥️ Desktop Studio (Native GUI)
+#### Option B: Desktop Studio (Native GUI)
 ```bash
 python tts_gui.py
 # Or on Windows, double click start_gui.bat
 ```
 *A responsive dark-themed desktop suite with waveform audio canvas, dialogue lab, batch queue, and history manager.*
 
-#### Option C: ⚡ Powerful CLI
+#### Option C: Powerful CLI
 ```bash
 # Instant voiceover with synchronized subtitles
 python text_to_speech.py "This is Text to Speech Studio v2.0." --srt
@@ -145,7 +145,7 @@ python text_to_speech.py --dialogue sample_dialogue.txt --output podcast_ep1.mp3
 
 ---
 
-## 🎭 Multi-Speaker Dialogue Lab
+## Multi-Speaker Dialogue Lab
 
 Create multi-character audiobooks, gaming dialogues, and podcast discussions effortlessly.
 
@@ -172,11 +172,11 @@ python text_to_speech.py --dialogue sample_dialogue.txt --output epic_scene.mp3
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Creator as 🎬 Creator
-    participant Parser as 📜 Dialogue Parser
-    participant Engine as 🧠 Neural Engine
-    participant Audio as 🎵 Audio Mixer
-    participant Subs as 📝 Subtitle Syncer
+    actor Creator as Creator
+    participant Parser as Dialogue Parser
+    participant Engine as Neural Engine
+    participant Audio as Audio Mixer
+    participant Subs as Subtitle Syncer
 
     Creator->>Parser: Submit Dialogue Script
     Parser->>Engine: Stream Segment 1 (Narrator)
@@ -197,27 +197,27 @@ sequenceDiagram
 
 ---
 
-## 🎛️ Curated Studio Presets
+## Curated Studio Presets
 
 Apply tuned voice parameters with `--preset <id>` or select them in the Web / Desktop GUI:
 
 | Preset ID | Style Name | Recommended Voice | Rate | Pitch | Best For |
 | :--- | :--- | :--- | :---: | :---: | :--- |
-| `tiktok` | 📱 **TikTok / Reel Narrator** | `en-US-AvaNeural` | `+15%` | `+0Hz` | Viral shorts, TikToks, fast hook reels |
-| `podcast` | 🎙️ **Podcast Host** | `en-US-ChristopherNeural` | `+0%` | `-5Hz` | Deep broadcast, interviews, tech talks |
-| `storyteller` | 📖 **Audiobook Storyteller** | `en-GB-SoniaNeural` | `-5%` | `+0Hz` | Fiction, lore videos, British narration |
-| `trailer` | 🎬 **Epic Movie Trailer** | `en-US-GuyNeural` | `-12%` | `-18Hz` | Heavy cinematic teasers, gaming trailers |
-| `calm_asmr` | 🧘 **Meditative Calm / ASMR** | `en-US-JennyNeural` | `-20%` | `-4Hz` | Sleep stories, mindfulness apps |
-| `news_anchor`| 📰 **Breaking News Anchor** | `en-US-EricNeural` | `+6%` | `+0Hz` | Professional summaries, documentary |
-| `anime_upbeat`| ✨ **Anime Energetic** | `en-US-AriaNeural` | `+18%` | `+16Hz`| Gaming characters, anime commentary |
-| `cyberpunk_ai`| 🤖 **Sci-Fi AI / Cyberpunk** | `en-US-AnaNeural` | `+10%` | `+22Hz`| System assistants, robotic voices |
-| `hindi_rj` | 📻 **Hindi Radio Host** | `hi-IN-MadhurNeural` | `+6%` | `+0Hz` | Hindi / Hinglish podcasts and videos |
-| `spanish_latam`| 🌮 **Spanish Narration (LatAm)** | `es-MX-JorgeNeural` | `+0%` | `+0Hz` | Spanish storytelling & documentaries |
-| `japanese_anime`| 🌸 **Japanese Tokyo Voice** | `ja-JP-NanamiNeural` | `+5%` | `+8Hz` | Japanese anime dialogue & narration |
+| `tiktok` | **TikTok / Reel Narrator** | `en-US-AvaNeural` | `+15%` | `+0Hz` | Viral shorts, TikToks, fast hook reels |
+| `podcast` | **Podcast Host** | `en-US-ChristopherNeural` | `+0%` | `-5Hz` | Deep broadcast, interviews, tech talks |
+| `storyteller` | **Audiobook Storyteller** | `en-GB-SoniaNeural` | `-5%` | `+0Hz` | Fiction, lore videos, British narration |
+| `trailer` | **Epic Movie Trailer** | `en-US-GuyNeural` | `-12%` | `-18Hz` | Heavy cinematic teasers, gaming trailers |
+| `calm_asmr` | **Meditative Calm / ASMR** | `en-US-JennyNeural` | `-20%` | `-4Hz` | Sleep stories, mindfulness apps |
+| `news_anchor`| **Breaking News Anchor** | `en-US-EricNeural` | `+6%` | `+0Hz` | Professional summaries, documentary |
+| `anime_upbeat`| **Anime Energetic** | `en-US-AriaNeural` | `+18%` | `+16Hz`| Gaming characters, anime commentary |
+| `cyberpunk_ai`| **Sci-Fi AI / Cyberpunk** | `en-US-AnaNeural` | `+10%` | `+22Hz`| System assistants, robotic voices |
+| `hindi_rj` | **Hindi Radio Host** | `hi-IN-MadhurNeural` | `+6%` | `+0Hz` | Hindi / Hinglish podcasts and videos |
+| `spanish_latam`| **Spanish Narration (LatAm)** | `es-MX-JorgeNeural` | `+0%` | `+0Hz` | Spanish storytelling & documentaries |
+| `japanese_anime`| **Japanese Tokyo Voice** | `ja-JP-NanamiNeural` | `+5%` | `+8Hz` | Japanese anime dialogue & narration |
 
 ---
 
-## 💻 CLI Reference & Cheat Sheet
+## CLI Reference & Cheat Sheet
 
 ```bash
 # 1. Basic text synthesis
@@ -267,7 +267,7 @@ python text_to_speech.py "Automated status update" --json
 
 ---
 
-## 🔌 Developer REST API
+## Developer REST API
 
 Start the Web Studio server with `python web_studio.py` to access built-in REST API endpoints:
 
@@ -321,26 +321,26 @@ asyncio.run(main())
 
 ---
 
-## 📁 Project Architecture
+## Project Architecture
 
 ```
 text-to-speech-studio/
-├── tts_engine.py        # 🧠 Core Async Neural Engine & Subtitle Syncer
-├── tts_gui.py           # 🖥️ Dark-Themed Desktop Workstation (Tkinter + Visualizer)
-├── web_studio.py        # 🌐 Standalone Glassmorphism Web Studio (HTML5/Audio API)
-├── text_to_speech.py    # ⚡ Supercharged Automation CLI & Terminal Interface
-├── sample_dialogue.txt  # 🎭 Example Multi-Speaker Conversation Script
-├── test_studio.py       # 🧪 Automated Unit & Integration Test Suite
-├── start_gui.bat        # 🚀 1-Click Desktop GUI Launcher (Windows)
-├── start_web.bat        # 🚀 1-Click Web Studio Launcher (Windows)
-├── requirements.txt     # 📦 Dependencies & Optional Enhancements
-├── README.md            # 📖 Documentation & Feature Guide
-└── LICENSE              # ⚖️ MIT Open Source License
+├── tts_engine.py        # Core Async Neural Engine & Subtitle Syncer
+├── tts_gui.py           # Dark-Themed Desktop Workstation (Tkinter + Visualizer)
+├── web_studio.py        # Standalone Glassmorphism Web Studio (HTML5/Audio API)
+├── text_to_speech.py    # Supercharged Automation CLI & Terminal Interface
+├── sample_dialogue.txt  # Example Multi-Speaker Conversation Script
+├── test_studio.py       # Automated Unit & Integration Test Suite
+├── start_gui.bat        # 1-Click Desktop GUI Launcher (Windows)
+├── start_web.bat        # 1-Click Web Studio Launcher (Windows)
+├── requirements.txt     # Dependencies & Optional Enhancements
+├── README.md            # Documentation & Feature Guide
+└── LICENSE              # MIT Open Source License
 ```
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions make the open-source community an amazing place to build and create!
 1. Fork the Project
@@ -352,10 +352,10 @@ Contributions make the open-source community an amazing place to build and creat
 
 ---
 
-## ⚖️ License
+## License
 
 Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more details.
 
 <div align="center">
-  <sub>Built with ❤️ for creators, developers, and voice artists. Free and open source forever.</sub>
+  <sub>Built for creators, developers, and voice artists. Free and open source forever.</sub>
 </div>

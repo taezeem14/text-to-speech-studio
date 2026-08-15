@@ -38,6 +38,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     :root {
       --bg: #0b0f17;
@@ -98,6 +99,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
       padding: 6px 12px;
       border-radius: 8px;
       letter-spacing: 0.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .brand h1 {
@@ -431,7 +435,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <body>
   <header>
     <div class="brand">
-      <span class="logo-badge">TTS 2.0</span>
+      <span class="logo-badge"><i class="fa-solid fa-microphone-lines"></i> TTS 2.0</span>
       <h1>Text to Speech Studio</h1>
     </div>
     <div class="status-badge">
@@ -442,10 +446,10 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
   <main>
     <div class="tabs-nav">
-      <button class="tab-btn active" onclick="switchTab('studio')">🎙️ Single Studio</button>
-      <button class="tab-btn" onclick="switchTab('dialogue')">🎭 Dialogue Lab</button>
-      <button class="tab-btn" onclick="switchTab('voices')">🔍 Voice Directory</button>
-      <button class="tab-btn" onclick="switchTab('api')">⚡ REST API</button>
+      <button class="tab-btn active" onclick="switchTab('studio')"><i class="fa-solid fa-microphone-lines"></i> Single Studio</button>
+      <button class="tab-btn" onclick="switchTab('dialogue')"><i class="fa-solid fa-comments"></i> Dialogue Lab</button>
+      <button class="tab-btn" onclick="switchTab('voices')"><i class="fa-solid fa-list-ul"></i> Voice Directory</button>
+      <button class="tab-btn" onclick="switchTab('api')"><i class="fa-solid fa-code"></i> REST API</button>
     </div>
 
     <!-- TAB 1: SINGLE STUDIO -->
@@ -453,7 +457,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       <div class="glass-card">
         <div class="editor-header">
           <div class="presets-row" id="presetPills">
-            <span style="font-size: 12px; color: var(--subtext); font-weight: 600;">Presets:</span>
+            <span style="font-size: 12px; color: var(--subtext); font-weight: 600;"><i class="fa-solid fa-sliders"></i> Presets:</span>
             <!-- Populated via JS -->
           </div>
         </div>
@@ -484,12 +488,12 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
         <div class="action-row">
           <button id="generateBtn" class="btn-primary" onclick="generateSpeech()">
-            <span>⚡ Synthesize Speech & Subtitles</span>
+            <i class="fa-solid fa-bolt"></i> <span>Synthesize Speech & Subtitles</span>
           </button>
           <div id="downloadLinks" style="display: none; gap: 8px;">
-            <a id="mp3Download" class="btn-secondary" href="#" download>📥 Download MP3</a>
-            <a id="srtDownload" class="btn-secondary" href="#" download>📝 Download SRT</a>
-            <a id="vttDownload" class="btn-secondary" href="#" download>📄 Download VTT</a>
+            <a id="mp3Download" class="btn-secondary" href="#" download><i class="fa-solid fa-download"></i> Download MP3</a>
+            <a id="srtDownload" class="btn-secondary" href="#" download><i class="fa-solid fa-closed-captioning"></i> Download SRT</a>
+            <a id="vttDownload" class="btn-secondary" href="#" download><i class="fa-solid fa-file-lines"></i> Download VTT</a>
           </div>
         </div>
 
@@ -505,7 +509,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <!-- TAB 2: DIALOGUE LAB -->
     <section id="tab-dialogue" class="tab-content">
       <div class="glass-card">
-        <h3 style="font-size: 16px; margin-bottom: 8px; color: var(--accent-purple);">🎭 Multi-Speaker Script Dialogue Studio</h3>
+        <h3 style="font-size: 16px; margin-bottom: 8px; color: var(--accent-purple); display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-comments"></i> Multi-Speaker Script Dialogue Studio
+        </h3>
         <p style="font-size: 13px; color: var(--subtext); margin-bottom: 14px;">
           Compose full conversational scripts. Each character is rendered with their own voice and stitched into a seamless master track with synchronized subtitles!
         </p>
@@ -517,11 +523,11 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
         <div class="action-row">
           <button id="dialogueBtn" class="btn-primary" style="background: linear-gradient(135deg, #9d4edd, #00d2ff);" onclick="generateDialogue()">
-            <span>⚡ Compile Master Dialogue</span>
+            <i class="fa-solid fa-wand-magic-sparkles"></i> <span>Compile Master Dialogue</span>
           </button>
           <div id="dialogueDownloads" style="display: none; gap: 8px;">
-            <a id="dialogueMp3" class="btn-secondary" href="#" download>📥 Master Audio</a>
-            <a id="dialogueSrt" class="btn-secondary" href="#" download>📝 Dialogue SRT</a>
+            <a id="dialogueMp3" class="btn-secondary" href="#" download><i class="fa-solid fa-download"></i> Master Audio</a>
+            <a id="dialogueSrt" class="btn-secondary" href="#" download><i class="fa-solid fa-closed-captioning"></i> Dialogue SRT</a>
           </div>
         </div>
 
@@ -535,7 +541,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <section id="tab-voices" class="tab-content">
       <div class="glass-card">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-          <h3 style="font-size: 16px;">🔍 Microsoft Edge Neural Voice Catalog</h3>
+          <h3 style="font-size: 16px; display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-list-ul"></i> Microsoft Edge Neural Voice Catalog
+          </h3>
           <input type="text" id="voiceSearch" placeholder="Search voices by country, language, name..." style="width: 280px;" oninput="filterVoicesTable()">
         </div>
 
@@ -561,7 +569,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <!-- TAB 4: REST API DOCS -->
     <section id="tab-api" class="tab-content">
       <div class="glass-card">
-        <h3 style="font-size: 16px; margin-bottom: 8px; color: var(--accent);">⚡ Developer REST API Endpoints</h3>
+        <h3 style="font-size: 16px; margin-bottom: 8px; color: var(--accent); display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-code"></i> Developer REST API Endpoints
+        </h3>
         <p style="font-size: 13px; color: var(--subtext); margin-bottom: 16px;">
           Integrate neural TTS directly into your apps, bots, Discord servers, and content automation pipelines.
         </p>
@@ -594,6 +604,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       </div>
     </section>
   </main>
+
 
   <script>
     let allVoices = [];
@@ -677,7 +688,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
           <td><span class="tag-gender ${isFem ? 'tag-female' : 'tag-male'}">${v.Gender}</span></td>
           <td style="color:var(--subtext);">${v.FriendlyName}</td>
           <td>
-            <button class="btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="auditionVoice('${v.ShortName}')">🔊 Audition</button>
+            <button class="btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="auditionVoice('${v.ShortName}')"><i class="fa-solid fa-volume-high"></i> Audition</button>
           </td>
         `;
         tbody.appendChild(tr);
@@ -734,7 +745,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
       const btn = document.getElementById('generateBtn');
       btn.disabled = true;
-      btn.innerHTML = '<span>⏳ Synthesizing Neural Audio...</span>';
+      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Synthesizing Neural Audio...</span>';
 
       try {
         const res = await fetch('/api/synthesize', {
@@ -774,7 +785,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
         alert('Synthesis failed: ' + err.message);
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '<span>⚡ Synthesize Speech & Subtitles</span>';
+        btn.innerHTML = '<i class="fa-solid fa-bolt"></i> <span>Synthesize Speech & Subtitles</span>';
       }
     }
 
@@ -784,7 +795,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
       const btn = document.getElementById('dialogueBtn');
       btn.disabled = true;
-      btn.innerHTML = '<span>⏳ Compiling Dialogue Track...</span>';
+      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Compiling Dialogue Track...</span>';
 
       try {
         const res = await fetch('/api/dialogue', {
@@ -809,7 +820,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
         alert('Dialogue generation failed: ' + err.message);
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '<span>⚡ Compile Master Dialogue</span>';
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> <span>Compile Master Dialogue</span>';
       }
     }
 

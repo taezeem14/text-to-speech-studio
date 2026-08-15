@@ -159,7 +159,7 @@ class TTSStudioGUI:
 
         title_lbl = tk.Label(
             header,
-            text="🎙️ TEXT TO SPEECH STUDIO",
+            text="TEXT TO SPEECH STUDIO",
             bg=self.c_sidebar,
             fg=self.c_accent,
             font=("Segoe UI", 13, "bold"),
@@ -179,7 +179,7 @@ class TTSStudioGUI:
 
         self.header_status = tk.Label(
             header,
-            text="● Engine Ready",
+            text="[ Ready ]",
             bg=self.c_sidebar,
             fg=self.c_accent_green,
             font=("Segoe UI", 9, "bold"),
@@ -198,11 +198,11 @@ class TTSStudioGUI:
         self.tab_batch = ttk.Frame(self.notebook, style="Card.TFrame")
         self.tab_history = ttk.Frame(self.notebook, style="Card.TFrame")
 
-        self.notebook.add(self.tab_studio, text=" 🎙️ Single Studio ")
-        self.notebook.add(self.tab_dialogue, text=" 🎭 Dialogue Lab ")
-        self.notebook.add(self.tab_voices, text=" 🔍 Voice Explorer ")
-        self.notebook.add(self.tab_batch, text=" ⚡ Batch Studio ")
-        self.notebook.add(self.tab_history, text=" 📜 History & Presets ")
+        self.notebook.add(self.tab_studio, text=" Single Studio ")
+        self.notebook.add(self.tab_dialogue, text=" Dialogue Lab ")
+        self.notebook.add(self.tab_voices, text=" Voice Directory ")
+        self.notebook.add(self.tab_batch, text=" Batch Studio ")
+        self.notebook.add(self.tab_history, text=" History & Presets ")
 
         self._build_studio_tab()
         self._build_dialogue_tab()
@@ -400,7 +400,7 @@ class TTSStudioGUI:
 
         self.generate_btn = tk.Button(
             action_row,
-            text="⚡ GENERATE SPEECH & SUBTITLES",
+            text="GENERATE SPEECH & SUBTITLES",
             bg=self.c_accent,
             fg="#000000",
             font=("Segoe UI", 10, "bold"),
@@ -413,7 +413,7 @@ class TTSStudioGUI:
 
         self.play_studio_btn = tk.Button(
             action_row,
-            text="▶️ Play Audio",
+            text="Play Audio",
             bg=self.c_btn_bg,
             fg=self.c_text,
             font=("Segoe UI", 10),
@@ -426,7 +426,7 @@ class TTSStudioGUI:
 
         self.reveal_btn = tk.Button(
             action_row,
-            text="📁 Open Folder",
+            text="Open Folder",
             bg=self.c_btn_bg,
             fg=self.c_text,
             font=("Segoe UI", 10),
@@ -448,7 +448,7 @@ class TTSStudioGUI:
 
         tk.Label(
             top,
-            text="🎭 Multi-Speaker Script Dialogue Studio",
+            text="Multi-Speaker Script Dialogue Studio",
             bg=self.c_card,
             fg=self.c_accent_purple,
             font=("Segoe UI", 11, "bold"),
@@ -500,7 +500,7 @@ class TTSStudioGUI:
 
         self.dialogue_gen_btn = tk.Button(
             opts,
-            text="⚡ COMPILE & GENERATE MASTER DIALOGUE",
+            text="COMPILE & GENERATE MASTER DIALOGUE",
             bg=self.c_accent_purple,
             fg="#ffffff",
             font=("Segoe UI", 10, "bold"),
@@ -513,7 +513,7 @@ class TTSStudioGUI:
 
         self.dialogue_play_btn = tk.Button(
             opts,
-            text="▶️ Play Master Audio",
+            text="Play Master Audio",
             bg=self.c_btn_bg,
             fg=self.c_text,
             font=("Segoe UI", 10),
@@ -568,7 +568,7 @@ class TTSStudioGUI:
 
         tk.Button(
             filter_bar,
-            text="🔄 Refresh Voices",
+            text="Refresh Voices",
             bg=self.c_btn_bg,
             fg=self.c_text,
             relief="flat",
@@ -603,7 +603,7 @@ class TTSStudioGUI:
 
         tk.Button(
             audition_bar,
-            text="🔊 AUDITION SELECTED VOICE",
+            text="AUDITION SELECTED VOICE",
             bg=self.c_accent_green,
             fg="#000000",
             font=("Segoe UI", 9, "bold"),
@@ -615,7 +615,7 @@ class TTSStudioGUI:
 
         tk.Button(
             audition_bar,
-            text="✨ Use In Studio",
+            text="Use In Studio",
             bg=self.c_btn_bg,
             fg=self.c_accent,
             font=("Segoe UI", 9),
@@ -636,7 +636,7 @@ class TTSStudioGUI:
 
         tk.Label(
             frame,
-            text="⚡ Batch Text File Converter",
+            text="Batch Text File Converter",
             bg=self.c_card,
             fg=self.c_accent,
             font=("Segoe UI", 11, "bold"),
@@ -696,7 +696,7 @@ class TTSStudioGUI:
 
         self.batch_start_btn = tk.Button(
             b_bottom,
-            text="⚡ START BATCH CONVERSION",
+            text="START BATCH CONVERSION",
             bg=self.c_accent,
             fg="#000000",
             font=("Segoe UI", 10, "bold"),
@@ -721,7 +721,7 @@ class TTSStudioGUI:
 
         tk.Label(
             top,
-            text="📜 Audio Generation History",
+            text="Audio Generation History",
             bg=self.c_card,
             fg=self.c_accent,
             font=("Segoe UI", 11, "bold"),
@@ -768,7 +768,7 @@ class TTSStudioGUI:
 
         tk.Button(
             h_actions,
-            text="▶️ Play Selected",
+            text="Play Selected",
             bg=self.c_btn_bg,
             fg=self.c_accent,
             font=("Segoe UI", 9),
@@ -780,7 +780,7 @@ class TTSStudioGUI:
 
         tk.Button(
             h_actions,
-            text="📁 Reveal File",
+            text="Reveal File",
             bg=self.c_btn_bg,
             fg=self.c_text,
             font=("Segoe UI", 9),
@@ -815,7 +815,7 @@ class TTSStudioGUI:
         # Play/Stop master button
         self.dock_play_btn = tk.Button(
             dock,
-            text="▶️ PLAY",
+            text="PLAY",
             bg=self.c_accent,
             fg="#000000",
             font=("Segoe UI", 10, "bold"),
@@ -825,6 +825,7 @@ class TTSStudioGUI:
             command=self._on_play_last,
         )
         self.dock_play_btn.pack(side="right")
+
 
     # ------------------------------------------------------- Audio Playback
 
