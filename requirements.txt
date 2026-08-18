@@ -1,2 +1,8 @@
-edge-tts>=6.1.0
+# Core Neural Speech Engine
+edge-tts>=7.0.0
+
+# Terminal UI & Styling (Optional / Recommended)
+rich>=13.0.0
+
+# In-App Desktop Playback (Optional)
 pygame>=2.5.0

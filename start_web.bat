@@ -1,8 +1,8 @@
 @echo off
-title Text to Speech Desktop Studio
+title Text to Speech Web Studio
 cd /d "%~dp0"
 echo =====================================================================
-echo  Launching Text to Speech Studio (Desktop GUI) ...
+echo  Launching Text to Speech Studio (Web Edition) ...
 echo =====================================================================
 
 REM Detect virtual environment
@@ -34,10 +34,10 @@ if %ERRORLEVEL% NEQ 0 (
     %PY% -m pip install -r requirements.txt
 )
 
-%PY% tts_gui.py %*
+%PY% web_studio.py %*
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo [ERROR] Desktop Studio failed to launch.
+    echo [ERROR] Web Studio failed to launch.
     echo     %PY% -m pip install -r requirements.txt
     echo.
     pause

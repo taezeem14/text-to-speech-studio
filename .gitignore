@@ -10,8 +10,14 @@ dist/
 venv/
 env/
 
-# Generated speech output
+# Generated speech & subtitle outputs
 *.mp3
+*.wav
+*.srt
+*.vtt
+web_output/
+batch_output/
+.tts_studio/
 !keep_me.mp3
 
 # OS / editor cruft
